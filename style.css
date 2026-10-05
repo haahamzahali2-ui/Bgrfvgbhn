@@ -1494,6 +1494,7 @@
     width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
     background: var(--gold); color: #1A1208; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700;
   }
+  .mk-step .mk-step-title { width: auto; height: auto; border-radius: 0; background: none; color: inherit; font: inherit; display: inline; }
   .mk-step small { font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 400; color: var(--text-light); }
   #mkErrorPicker { margin-bottom: 8px; }
   .error-tip { margin-bottom: 16px; }
@@ -1611,6 +1612,26 @@
   .entry-unlogged { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 18px; background: var(--alert-amber-bg); font-size: 13px; color: var(--alert-amber); font-weight: 600; }
   .entry-notes { padding: 10px 18px; border-top: 1px solid var(--cream); font-size: 13px; color: var(--text-mid); font-style: italic; }
 
+  /* Log mode switch: passage vs. single mistake */
+  .log-mode-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 22px; }
+  .log-mode-toggle button {
+    display: flex; align-items: center; gap: 14px; padding: 16px 20px; text-align: left; cursor: pointer;
+    background: var(--white); border: 2px solid var(--border); border-radius: 18px; font-family: 'DM Sans', sans-serif; transition: all 0.2s;
+  }
+  .log-mode-toggle button:hover { border-color: var(--gold-light); }
+  .log-mode-toggle button.active { border-color: var(--gold); background: var(--gold-pale); box-shadow: 0 6px 20px var(--shadow); }
+  .log-mode-toggle b { display: block; font-size: 16px; color: var(--text-dark); }
+  .log-mode-toggle small { font-size: 12px; color: var(--text-light); }
+  .lm-icon { font-size: 26px; }
+  #page-log.mode-mistake .log-score-only { display: none !important; }
+  .ls-score.mistake { font-size: 44px; }
+
+  /* Deep dive */
+  .heat-cell small { display: block; font-size: 10px; font-weight: 500; color: var(--text-light); }
+  .heat-cell.empty { color: var(--text-light); cursor: default; }
+  .heat-cell.overall { background: var(--cream); cursor: default; }
+  #page-deep-dive .time-filter-bar .pt-chip-row { gap: 8px; }
+
   /* ═══════════════════════════════════
      RESPONSIVE
   ═══════════════════════════════════ */
@@ -1690,6 +1711,7 @@
     .qa-text b { font-size: 14px; }
     .home-hero.compact h1 { font-size: 34px; }
     .log-card { padding: 18px 14px 12px; }
+    .log-mode-toggle { grid-template-columns: 1fr; gap: 8px; }
     .qcard-answers { grid-template-columns: 1fr; gap: 0; }
     .qcard-head { flex-wrap: wrap; }
     .entry-main { flex-wrap: wrap; gap: 12px; }

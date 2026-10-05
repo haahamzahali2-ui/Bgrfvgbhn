@@ -5,7 +5,7 @@
 // ═══════════════════════════════════
 
 const LOG_DRAFT_KEY = 'mcat_log_draft';
-let logState = { ready: false, sessionId: null, removed: [] };
+let logState = { ready: false, sessionId: null, removed: [], mode: 'passage' };
 let logDraftTimer = null;
 
 // ═══════════════════════════════════
@@ -42,15 +42,16 @@ function getSessionLinks(s) { return (s && Array.isArray(s.links)) ? s.links.fil
 // ═══════════════════════════════════
 function openLogEditor(opts = {}) {
   const s = opts.sessionId ? db.sessions.find(x => x.id === opts.sessionId) : null;
-  logState = { ready: true, sessionId: s ? s.id : null, removed: [] };
+  logState = { ready: true, sessionId: s ? s.id : null, removed: [], mode: s ? 'passage' : (opts.mode || 'passage') };
   if (s) {
     fillLogForm(entryFromSession(s));
   } else {
     const last = [...db.sessions].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
     const p = opts.prefill || {};
     fillLogForm({
-      date: todayISO(), section: p.section || last?.section || 'cp', subject: '', provider: last?.provider || '',
-      topic: '', links: [''], total: p.total || '', correct: '', minutes: p.minutes || '', notes: '', items: []
+      mode: logState.mode, date: p.date || todayISO(), section: p.section || last?.section || 'cp', subject: p.subject || '',
+      provider: p.provider || last?.provider || '', topic: p.topic || '', links: [''], total: p.total || '', correct: '',
+      minutes: p.minutes || '', notes: '', items: []
     });
   }
   renderLogChrome();
@@ -59,8 +60,27 @@ function openLogEditor(opts = {}) {
     syncMissCards();
     setTimeout(() => document.getElementById('logItemsSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
   } else if (!s) {
-    setTimeout(() => document.getElementById('log-subject')?.focus(), 80);
+    setTimeout(() => document.getElementById(document.getElementById('log-subject').value ? 'log-topic' : 'log-subject')?.focus(), 80);
   }
+}
+
+// "Log a mistake" anywhere in the app opens the same editor in single-mistake mode
+function openAddMistakeModal(prefill = {}) {
+  openLogEditor({ mode: 'mistake', prefill: { ...prefill, topic: prefill.flName || prefill.topic || '' } });
+}
+
+// Switch between logging a whole passage and logging just one mistake
+function setLogMode(mode, fromFill) {
+  if (logState.sessionId) mode = 'passage';
+  logState.mode = mode;
+  const page = document.getElementById('page-log');
+  page.classList.toggle('mode-mistake', mode === 'mistake');
+  document.querySelectorAll('#logModeToggle button').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  document.getElementById('logStep2Title').textContent = mode === 'mistake' ? 'The question you missed' : 'Questions you missed';
+  if (!logState.sessionId) document.getElementById('logSaveBtn').textContent = mode === 'mistake' ? 'Save Mistake' : 'Save Entry';
+  if (mode === 'mistake' && !document.querySelector('#logItems .qcard')) addQcard();
+  updateLogSummary();
+  if (!fromFill) scheduleDraftSave();
 }
 
 // Navigating to the Log tab directly starts a fresh entry
@@ -70,8 +90,8 @@ function ensureLogEditor() {
 
 function openLogEditorSilently() {
   const last = [...db.sessions].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
-  logState = { ready: true, sessionId: null, removed: [] };
-  fillLogForm({ date: todayISO(), section: last?.section || 'cp', subject: '', provider: last?.provider || '', topic: '', links: [''], total: '', correct: '', minutes: '', notes: '', items: [] });
+  logState = { ready: true, sessionId: null, removed: [], mode: 'passage' };
+  fillLogForm({ mode: 'passage', date: todayISO(), section: last?.section || 'cp', subject: '', provider: last?.provider || '', topic: '', links: [''], total: '', correct: '', minutes: '', notes: '', items: [] });
   renderLogChrome();
 }
 
@@ -91,13 +111,14 @@ function entryFromSession(s) {
 // Header, draft banner, delete button — depends on new vs. edit
 function renderLogChrome() {
   const editing = !!logState.sessionId;
-  document.getElementById('logTitle').textContent = editing ? 'Edit Log Entry' : 'Daily Log';
+  document.getElementById('logTitle').textContent = editing ? 'Edit Passage' : 'Log a Passage';
   document.getElementById('logSubtitle').textContent = editing
-    ? 'Update the set or any of its questions — review history is kept'
-    : 'Log a set and everything you missed — all in one place';
+    ? 'Update the passage or any of its questions — review history is kept'
+    : 'Pick what you want to log below — everything lives in one place';
   document.getElementById('logDeleteTrigger').style.display = editing ? 'block' : 'none';
+  document.getElementById('logModeToggle').style.display = editing ? 'none' : 'grid';
   document.getElementById('logDeleteBar').classList.remove('show');
-  document.getElementById('logSaveBtn').textContent = editing ? 'Save Changes' : 'Save Entry';
+  document.getElementById('logSaveBtn').textContent = editing ? 'Save Changes' : logState.mode === 'mistake' ? 'Save Mistake' : 'Save Entry';
 
   const banner = document.getElementById('logDraftBanner');
   const draft = editing ? null : loadLogDraft();
@@ -131,11 +152,12 @@ function fillLogForm(e) {
   items.innerHTML = '';
   (e.items || []).forEach(it => addQcard(it));
   updateLogOptions();
-  updateLogSummary();
+  setLogMode(logState.sessionId ? 'passage' : (e.mode || 'passage'), true);
 }
 
 function readLogForm() {
   return {
+    mode: logState.mode,
     date: document.getElementById('log-date').value,
     section: document.getElementById('log-section').value,
     subject: document.getElementById('log-subject').value.trim(),
@@ -278,6 +300,7 @@ function renumberQcards() {
 
 // Make sure there's a card for every miss (never deletes cards you've filled in)
 function syncMissCards() {
+  if (logState.mode === 'mistake') return;
   const total = parseInt(document.getElementById('log-total').value, 10);
   const correct = parseInt(document.getElementById('log-correct').value, 10);
   if (!total || isNaN(correct) || correct > total) return;
@@ -339,6 +362,27 @@ function updateLogSummary() {
   const el = document.getElementById('logSummary');
   if (!el) return;
   const f = readLogForm();
+  if (logState.mode === 'mistake') {
+    const items = f.items.filter(it => !isQcardEmpty(it));
+    const typed = items.filter(it => it.errorType);
+    const issues = [];
+    if (!f.subject) issues.push('Add a subject');
+    if (!typed.length) issues.push('Pick "what went wrong" on the question');
+    if (items.length > typed.length) issues.push(`${plural(items.length - typed.length, 'question')} still need${items.length - typed.length === 1 ? 's' : ''} "what went wrong"`);
+    el.innerHTML = `
+      <div class="ls-score mistake">❌</div>
+      <div class="ls-sub">${typed.length ? plural(typed.length, 'mistake') + ' ready' : 'Single mistake'}</div>
+      <div class="ls-rows">
+        <div class="ls-row"><span>Questions</span><b>${items.length}</b></div>
+        <div class="ls-row"><span>With answers</span><b>${items.filter(it => it.myAnswer && it.correctAnswer).length}</b></div>
+        <div class="ls-row"><span>Links</span><b>${f.links.filter(u => safeUrl(u)).length + items.filter(it => safeUrl(it.link)).length}</b></div>
+      </div>
+      ${typed.map(it => { const et = getErrorType(it.errorType); return `<div class="ls-types"><span class="error-chip" style="--bucket-color:${getBucket(et.bucket).color}">${et.icon} ${escapeHtml(et.label)}</span></div>`; }).join('')}
+      ${issues.length ? `<ul class="ls-issues">${issues.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul>` : `<div class="ls-ready">✓ Ready to save</div>`}`;
+    const cnt = document.getElementById('logMissCount');
+    if (cnt) cnt.textContent = 'add more with the button below';
+    return;
+  }
   const total = parseInt(f.total, 10), correct = parseInt(f.correct, 10), minutes = parseFloat(f.minutes);
   const valid = total > 0 && !isNaN(correct) && correct <= total && correct >= 0;
   const acc = valid ? pct(correct, total) : null;
@@ -408,6 +452,7 @@ function loadLogDraft() {
 function restoreLogDraft() {
   const d = loadLogDraft();
   if (!d) return;
+  logState.mode = d.data.mode || 'passage';
   fillLogForm(d.data);
   document.getElementById('logDraftBanner').style.display = 'none';
   showToast('Draft restored ✓');
@@ -423,6 +468,7 @@ function discardLogDraft() {
 // SAVE / DELETE
 // ═══════════════════════════════════
 function saveLogEntry() {
+  if (logState.mode === 'mistake') return saveMistakeOnly();
   const f = readLogForm();
   const total = parseInt(f.total, 10), correct = parseInt(f.correct, 10);
   const minutes = f.minutes ? Math.max(0, parseFloat(f.minutes)) : 0;
@@ -482,6 +528,38 @@ function saveLogEntry() {
   highlightEntry(sid);
   showToast(wasEdit ? 'Entry updated ✓'
     : `Logged ${correct}/${total} — ${pct(correct, total)}%${missed ? ` · ${loggedMiss}/${missed} misses explained` : ' · perfect! 💯'} ✓`);
+}
+
+// Single-mistake mode: save the question cards as standalone mistakes (no score)
+function saveMistakeOnly() {
+  const f = readLogForm();
+  if (!f.subject) { showToast('Please add a subject'); document.getElementById('log-subject').focus(); return; }
+  const passageLink = f.links.map(safeUrl).find(Boolean) || '';
+  const items = [];
+  for (const card of document.querySelectorAll('#logItems .qcard')) {
+    const it = readQcard(card);
+    if (isQcardEmpty(it)) continue;
+    if (!it.errorType) {
+      card.classList.add('open', 'invalid');
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      showToast(`Pick "what went wrong" for ${card.querySelector('.qcard-num').textContent}`);
+      return;
+    }
+    items.push(it);
+  }
+  if (!items.length) { showToast('Pick "what went wrong" on the question first'); return; }
+  const tags = f.topic ? [f.topic] : [];
+  items.forEach((it, i) => db.mistakes.push(normalizeMistake({
+    id: newId('MK'), createdAt: Date.now() + i, date: f.date || todayISO(), section: f.section, subject: f.subject,
+    provider: f.provider, sessionId: null, questionRef: it.qref, question: it.question, myAnswer: it.myAnswer,
+    correctAnswer: it.correctAnswer, errorType: it.errorType, concept: it.concept, what: it.what, takeaway: it.takeaway,
+    link: safeUrl(it.link) || passageLink, anki: it.anki, tags
+  })));
+  saveDB();
+  discardLogDraft();
+  logState.ready = false;
+  showPage('mistakes');
+  showToast(`Logged ${plural(items.length, 'mistake')} ✓ — it'll show up in your review queue tomorrow`);
 }
 
 function confirmDeleteLogEntry() {

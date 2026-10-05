@@ -485,6 +485,7 @@ function refreshAll() {
     'log': () => updateLogSummary(),
     'fl-list': () => renderFullLengths(),
     'analytics': () => renderAnalytics(),
+    'deep-dive': () => renderDeepDive(),
     'mistakes': () => renderMistakes(),
     'mistake-insights': () => renderMistakeInsights(),
     'review': () => renderReview(),

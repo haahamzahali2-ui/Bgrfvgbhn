@@ -13,9 +13,13 @@ Everything is grouped behind four buttons at the top:
 | 🔁 **Review** | Review Queue · All Mistakes · Patterns |
 | 📈 **Progress** | Analytics · Content Checklist |
 
-## The Daily Log: one place for everything
+## Log a Passage: one button for everything
 
-Do a passage or a question set, then log it in one form:
+Every "log" button opens the same screen. At the top, choose:
+- **📝 Log a passage / set**: score, time, link, plus every question you missed (below)
+- **❌ Just log a mistake**: one question, no score needed (e.g. from a full-length review)
+
+For a passage or set:
 
 1. **What did you do?** Fill in the date, section, subject, and provider, the passage or set name, and **links to the passage** (add as many as you like). Then enter the number of questions, how many you got right, and the minutes it took.
 2. **Questions you missed.** A card appears for every miss. On each card, record:
@@ -33,6 +37,17 @@ Do a passage or a question set, then log it in one form:
 3. **Reflection.** Optional notes on how it went.
 
 A live sidebar shows your accuracy, pace vs. test pace, how many misses you've explained, and anything still missing. Drafts save automatically, so closing the tab won't lose your work. **Log History** shows every entry grouped by day, with links you can click and each miss listed inline. Click an entry to edit it; review history is kept.
+
+## 🔬 Deep Dive analytics (Progress → Deep Dive)
+- **What the Numbers Say**: findings written for you. Examples: best and worst weekday, whether rushing or going slow costs points, fatigue in long sets, whether you lean toward one answer letter, and week-over-week momentum.
+- **Momentum**: rolling 7-day accuracy plus daily volume over the last 60 days.
+- **Pace vs. Accuracy** scatter (every timed set, compared with real test pace).
+- **Fatigue**: accuracy by set length.
+- **Weekday Rhythm**: accuracy by day of the week.
+- **Answer-Choice Habits**: the letters you pick wrong vs. the letters that were correct.
+- **Score Spread**: how your sets are distributed by accuracy.
+- **Provider × Section**: an accuracy grid; click a cell to see those passages.
+- Filter by period and section; the KPIs show 7-day accuracy, questions per study day, consistency, and your best day.
 
 ## Pages
 

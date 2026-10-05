@@ -281,7 +281,7 @@ function setMistakeLinkLabel() {
 }
 
 // prefill: optional fields to start from (e.g., from a session)
-function openAddMistakeModal(prefill = {}) {
+function openMistakeModalBlank(prefill = {}) {
   editingMistakeId = null;
   mistakeLinkedSessionId = prefill.sessionId || null;
   const s = db.sessions.find(x => x.id === mistakeLinkedSessionId);
@@ -398,7 +398,7 @@ function saveMistake(andAnother) {
   const linked = mistakeLinkedSessionId;
   closeModal('mistakeModal');
   refreshAll();
-  if (andAnother) openAddMistakeModal({ sessionId: linked, section, subject, provider, date, tags });
+  if (andAnother) openMistakeModalBlank({ sessionId: linked, section, subject, provider, date, tags });
 }
 
 function confirmDeleteMistake() {

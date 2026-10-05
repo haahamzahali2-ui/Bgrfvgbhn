@@ -146,7 +146,7 @@ function entryCardHtml(s) {
 // "Did you log today?" prompt at the top of the history
 function todayPromptHtml() {
   const today = db.sessions.filter(s => s.date === todayISO());
-  if (!today.length) return `<div class="today-prompt empty"><span>📅 <b>Nothing logged today yet.</b> Did a passage or a question set? Log it while it's fresh.</span><button class="btn-save" onclick="openLogEditor()">+ Log today's practice</button></div>`;
+  if (!today.length) return `<div class="today-prompt empty"><span>📅 <b>Nothing logged today yet.</b> Did a passage or a question set? Log it while it's fresh.</span><button class="btn-save" onclick="openLogEditor()">+ Log a passage</button></div>`;
   const sum = summarizeSessions(today);
   const unl = today.reduce((a, s) => a + getUnloggedCount(s), 0);
   return `<div class="today-prompt"><span>✅ <b>Today:</b> ${plural(today.length, 'entry', 'entries')} · ${sum.questions} Qs · ${sum.accuracy}%${unl ? ` · <b class="warn">${unl} still to explain</b>` : ' · everything explained'}</span><button class="btn-save" onclick="openLogEditor()">+ Log another</button></div>`;

@@ -82,7 +82,7 @@
   <div class="home-label">What do you want to do?</div>
   <div class="quick-actions">
     <button class="qa-btn primary" onclick="openLogEditor()">
-      <span class="qa-icon">📝</span><span class="qa-text"><b>Log Today's Practice</b><small>Set + what went wrong, in one go</small></span>
+      <span class="qa-icon">📝</span><span class="qa-text"><b>Log a Passage</b><small>Score + mistakes, or just a mistake</small></span>
     </button>
     <button class="qa-btn" onclick="startReview('due')">
       <span class="qa-icon">🔁</span><span class="qa-text"><b>Review Mistakes</b><small id="qaReviewSub">Nothing due</small></span>
@@ -150,6 +150,15 @@
   </div>
   <div class="log-draft-banner" id="logDraftBanner" style="display:none;"></div>
 
+  <div class="log-mode-toggle" id="logModeToggle">
+    <button type="button" data-mode="passage" onclick="setLogMode('passage')">
+      <span class="lm-icon">📝</span><span><b>Log a passage / set</b><small>Score, time, link — plus every question you missed</small></span>
+    </button>
+    <button type="button" data-mode="mistake" onclick="setLogMode('mistake')">
+      <span class="lm-icon">❌</span><span><b>Just log a mistake</b><small>One question — no score needed</small></span>
+    </button>
+  </div>
+
   <datalist id="logSubjectOptions"></datalist>
   <datalist id="logProviderOptions"></datalist>
   <datalist id="logConceptOptions"></datalist>
@@ -178,7 +187,7 @@
           <div id="logLinks"></div>
           <button type="button" class="filter-clear-btn log-add-link" onclick="addLogLink().focus()">+ Add another link</button>
         </div>
-        <div class="form-row-triple">
+        <div class="form-row-triple log-score-only">
           <div class="form-row"><label>Questions</label><input type="number" min="1" id="log-total" placeholder="e.g. 6" /></div>
           <div class="form-row"><label>Correct</label><input type="number" min="0" id="log-correct" placeholder="e.g. 4" /></div>
           <div class="form-row"><label>Minutes</label><input type="number" min="0" id="log-minutes" placeholder="e.g. 10" /></div>
@@ -186,11 +195,11 @@
       </section>
 
       <section class="log-card" id="logItemsSection">
-        <div class="mk-step"><span>2</span> Questions you missed <small id="logMissCount"></small></div>
+        <div class="mk-step"><span>2</span> <span class="mk-step-title" id="logStep2Title">Questions you missed</span> <small id="logMissCount"></small></div>
         <div id="logItems"></div>
         <div class="log-item-actions">
           <button type="button" class="analytics-export-btn" onclick="addMissCard(false)">+ Add a missed question</button>
-          <button type="button" class="confetti-btn" onclick="addMissCard(true)">+ Add a lucky guess 🍀</button>
+          <button type="button" class="confetti-btn log-score-only" onclick="addMissCard(true)">+ Add a lucky guess 🍀</button>
           <span class="log-item-tools">
             <button type="button" class="filter-clear-btn" onclick="setAllQcards(true)">Expand all</button>
             <button type="button" class="filter-clear-btn" onclick="setAllQcards(false)">Collapse all</button>
@@ -198,7 +207,7 @@
         </div>
       </section>
 
-      <section class="log-card">
+      <section class="log-card log-score-only">
         <div class="mk-step"><span>3</span> Reflection <small>optional</small></div>
         <div class="form-row"><textarea id="log-notes" placeholder="How did it go? Timing, focus, what you'll change tomorrow…"></textarea></div>
       </section>
@@ -237,7 +246,7 @@
     <div class="header-actions">
       <button class="pt-add-btn" onclick="openLogEditor()">
         <span class="pt-add-btn-icon">+</span>
-        New Entry
+        Log a Passage
       </button>
     </div>
   </div>
@@ -294,7 +303,7 @@
     <div class="header-actions">
       <button class="pt-add-btn" onclick="openLogEditor()">
         <span class="pt-add-btn-icon">+</span>
-        New Log Entry
+        Log a Passage
       </button>
     </div>
   </div>
@@ -398,7 +407,7 @@
   <div id="insightsEmpty" class="patients-empty-state" style="display:none;">
     <div class="patients-empty-icon">🔍</div>
     <div class="patients-empty-title">No mistakes logged for this view</div>
-    <div class="patients-empty-sub">Log what went wrong after a set and your patterns will show up here.<br><br><button class="btn-save" onclick="openAddMistakeModal()">Log a mistake</button></div>
+    <div class="patients-empty-sub">Log what went wrong after a set and your patterns will show up here.<br><br><button class="btn-save" onclick="openLogEditor()">Log a passage</button></div>
   </div>
 
   <div id="insightsBody">
@@ -674,6 +683,84 @@
 </div><!-- /page-analytics -->
 
 <!-- ═══════════════════════════════════════════════════════
+     DEEP DIVE — advanced analytics
+════════════════════════════════════════════════════════ -->
+<div class="page" id="page-deep-dive">
+  <div class="section-header">
+    <h2>Deep Dive</h2>
+  </div>
+  <div class="time-filter-bar">
+    <span class="time-filter-label">Period:</span>
+    <div class="pt-chip-row">
+      <button class="time-filter-btn active" onclick="setDDPeriod('all',this)">All Time</button>
+      <button class="time-filter-btn" onclick="setDDPeriod('30days',this)">Last 30 Days</button>
+      <button class="time-filter-btn" onclick="setDDPeriod('90days',this)">Last 90 Days</button>
+    </div>
+    <div class="breakdown-tabs inline" style="margin:0 0 0 auto;">
+      <button class="breakdown-tab active" onclick="setDDSection('all', this)">All</button>
+      <button class="breakdown-tab" onclick="setDDSection('cp', this)">C/P</button>
+      <button class="breakdown-tab" onclick="setDDSection('cars', this)">CARS</button>
+      <button class="breakdown-tab" onclick="setDDSection('bb', this)">B/B</button>
+      <button class="breakdown-tab" onclick="setDDSection('ps', this)">P/S</button>
+    </div>
+  </div>
+  <div class="analytics-summary-row" id="ddKPIs"></div>
+  <div id="ddEmpty" class="patients-empty-state" style="display:none;">
+    <div class="patients-empty-icon">🔬</div>
+    <div class="patients-empty-title">Nothing to analyze yet</div>
+    <div class="patients-empty-sub">Log a few passages and the deep dive fills in.<br><br><button class="btn-save" onclick="openLogEditor()">Log a passage</button></div>
+  </div>
+  <div id="ddBody">
+    <div class="analytics-card" style="margin-bottom:28px;">
+      <div class="analytics-card-title">What the Numbers Say</div>
+      <div class="analytics-card-sub">Findings written from your pacing, fatigue, weekday rhythm, answer habits, and momentum</div>
+      <div class="insights-list" id="ddFindings"></div>
+    </div>
+    <div class="analytics-card" style="margin-bottom:28px;">
+      <div class="analytics-card-title">Momentum</div>
+      <div class="analytics-card-sub">Rolling 7-day accuracy (line) and questions per day (bars, colored by that day's accuracy) — last 60 days</div>
+      <div class="analytics-chart-container" style="height:300px;"><canvas id="ddMomentumChart"></canvas></div>
+    </div>
+    <div class="analytics-grid">
+      <div class="analytics-card">
+        <div class="analytics-card-title">Pace vs. Accuracy</div>
+        <div class="analytics-card-sub" id="ddPaceSub">—</div>
+        <div class="analytics-chart-container" style="height:300px;"><canvas id="ddPaceChart"></canvas></div>
+      </div>
+      <div class="analytics-card">
+        <div class="analytics-card-title">Fatigue: Accuracy by Set Length</div>
+        <div class="analytics-card-sub">Does your accuracy hold up as sets get longer? The real exam is 53–59 questions per section.</div>
+        <div class="analytics-chart-container" style="height:300px;"><canvas id="ddLengthChart"></canvas></div>
+      </div>
+    </div>
+    <div class="analytics-grid">
+      <div class="analytics-card">
+        <div class="analytics-card-title">Weekday Rhythm</div>
+        <div class="analytics-card-sub">Accuracy by day of the week — find your sharpest days</div>
+        <div class="analytics-chart-container" style="height:260px;"><canvas id="ddWeekdayChart"></canvas></div>
+      </div>
+      <div class="analytics-card">
+        <div class="analytics-card-title">Answer-Choice Habits</div>
+        <div class="analytics-card-sub" id="ddBiasSub">—</div>
+        <div class="analytics-chart-container" style="height:260px;"><canvas id="ddBiasChart"></canvas></div>
+      </div>
+    </div>
+    <div class="analytics-grid">
+      <div class="analytics-card">
+        <div class="analytics-card-title">Score Spread</div>
+        <div class="analytics-card-sub" id="ddHistSub">—</div>
+        <div class="analytics-chart-container" style="height:260px;"><canvas id="ddHistChart"></canvas></div>
+      </div>
+      <div class="analytics-card">
+        <div class="analytics-card-title">Provider × Section</div>
+        <div class="analytics-card-sub">Your accuracy for each source in each section — darker = more questions. Click a cell to see those passages.</div>
+        <div class="table-scroll" id="ddProviderGrid"></div>
+      </div>
+    </div>
+  </div>
+</div><!-- /page-deep-dive -->
+
+<!-- ═══════════════════════════════════════════════════════
      CONTENT TRACKER — high-yield outline
 ════════════════════════════════════════════════════════ -->
 <div class="page" id="page-content">
@@ -813,7 +900,6 @@
     <div class="modal-actions">
       <button class="btn-cancel" id="mistakeDeleteTrigger" onclick="document.getElementById('mistakeDeleteBar').classList.add('show')" style="display:none;color:var(--alert-red);border-color:#f3b0aa;">Delete</button>
       <button class="btn-cancel" onclick="closeModal('mistakeModal')">Cancel</button>
-      <button class="btn-cancel" onclick="saveMistake(true)">Save &amp; Add Another</button>
       <button class="btn-save" onclick="saveMistake(false)">Save Mistake</button>
     </div>
   </div>
@@ -920,6 +1006,7 @@
 <script src="insights.js"></script>
 <script src="fullLengths.js"></script>
 <script src="analytics.js"></script>
+<script src="deepdive.js"></script>
 <script src="home.js"></script>
 <script src="achievements.js"></script>
 <script src="timer.js"></script>

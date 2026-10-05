@@ -233,7 +233,7 @@ function renderReviewDone() {
           : 'Every mistake you log becomes a review card here, scheduled right before you\'d forget it.'}</div>
       <div class="review-done-actions">
         ${ahead ? `<button class="analytics-export-btn" onclick="startReview('ahead')">Review ahead (${Math.min(20, ahead)})</button>` : ''}
-        ${db.mistakes.length ? '' : `<button class="btn-save" onclick="openAddMistakeModal()">Log a mistake</button>`}
+        ${db.mistakes.length ? '' : `<button class="btn-save" onclick="openLogEditor()">Log a passage</button>`}
         <button class="confetti-btn" onclick="showPage('mistakes')">Open journal</button>
       </div>
     </div>`;

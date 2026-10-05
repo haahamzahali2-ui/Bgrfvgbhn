@@ -8,9 +8,9 @@
 // Four groups, each a big button in the nav. Pages inside a group get a tab row.
 const PAGE_GROUPS = {
   home:     { pages: [['home', 'Home']] },
-  log:      { pages: [['log', '✏️ New Entry'], ['practice-list', '📅 Log History'], ['fl-list', '🧪 Full-Lengths']] },
+  log:      { pages: [['log', '✏️ Log a Passage'], ['practice-list', '📅 Log History'], ['fl-list', '🧪 Full-Lengths']] },
   review:   { pages: [['review', '🔁 Review Queue'], ['mistakes', '❌ All Mistakes'], ['mistake-insights', '🔍 Patterns']] },
-  progress: { pages: [['analytics', '📊 Analytics'], ['content', '🗺️ Content Checklist']] }
+  progress: { pages: [['analytics', '📊 Overview'], ['deep-dive', '🔬 Deep Dive'], ['content', '🗺️ Content Checklist']] }
 };
 const lastPageInGroup = {};
 let currentPage = 'home';
@@ -64,7 +64,7 @@ function showKbdHint(text) {
 const SHORTCUTS = {
   h: ['home', 'Home'], l: ['practice-list', 'Log History'], m: ['mistakes', 'All Mistakes'],
   w: ['mistake-insights', 'What Went Wrong'], r: ['review', 'Review Queue'], f: ['fl-list', 'Full-Lengths'],
-  a: ['analytics', 'Analytics'], c: ['content', 'Content Tracker']
+  a: ['analytics', 'Analytics'], c: ['content', 'Content Tracker'], i: ['deep-dive', 'Deep Dive']
 };
 
 document.addEventListener('keydown', e => {
@@ -106,11 +106,10 @@ document.addEventListener('keydown', e => {
   }
   if (k === 'n') {
     if (activePage === 'page-fl-list') { openAddFLModal(); showKbdHint('<kbd>N</kbd> New full-length'); }
-    else if (activePage === 'page-mistakes' || activePage === 'page-mistake-insights') { openAddMistakeModal(); showKbdHint('<kbd>N</kbd> Log mistake'); }
-    else { openLogEditor(); showKbdHint('<kbd>N</kbd> New log entry'); }
+        else { openLogEditor(); showKbdHint('<kbd>N</kbd> Log a passage'); }
     return;
   }
-  if (k === 'e') { openAddMistakeModal(); showKbdHint('<kbd>E</kbd> Log a mistake'); return; }
+  if (k === 'e') { openAddMistakeModal(); showKbdHint('<kbd>E</kbd> Just log a mistake'); return; }
   if (k === 't') { toggleTimerPanel(); showKbdHint('<kbd>T</kbd> Study timer'); return; }
   if (k === 'p') { printStudyReport(); return; }
   if (k === 'd') { toggleDarkMode(); showKbdHint('<kbd>D</kbd> Dark mode'); return; }
