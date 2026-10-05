@@ -289,6 +289,7 @@ function openAddMistakeModal(prefill = {}) {
   mistakeSelectedType = prefill.errorType || null;
   mistakeAnswers = { mine: '', correct: '' };
   document.getElementById('mistakeModalTitle').textContent = 'Log a Mistake';
+  setMkMore(!!(prefill.tags || []).length);
   document.getElementById('mk-date').value = s?.date || prefill.date || todayISO();
   document.getElementById('mk-section').value = s?.section || prefill.section || last?.section || 'cp';
   document.getElementById('mk-subject').value = s?.subject || prefill.subject || '';
@@ -317,6 +318,8 @@ function openEditMistakeModal(id) {
   mistakeSelectedType = m.errorType;
   mistakeAnswers = { mine: m.myAnswer || '', correct: m.correctAnswer || '' };
   document.getElementById('mistakeModalTitle').textContent = 'Edit Mistake';
+  const hasMore = m.questionRef || m.question || m.myAnswer || m.correctAnswer || (m.tags || []).length || m.anki;
+  setMkMore(!!hasMore);
   document.getElementById('mk-date').value = m.date || '';
   document.getElementById('mk-section').value = m.section;
   document.getElementById('mk-subject').value = m.subject || '';
@@ -343,6 +346,11 @@ function openEditMistakeModal(id) {
   document.getElementById('mistakeDeleteBar').classList.remove('show');
   document.getElementById('mistakeDeleteTrigger').style.display = 'inline-block';
   openModal('mistakeModal');
+}
+
+function setMkMore(open) {
+  document.getElementById('mkMore').style.display = open ? '' : 'none';
+  document.getElementById('mkMoreBtn').firstChild.textContent = `More details ${open ? '▴' : '▾'} `;
 }
 
 function resetMistakeReview() {

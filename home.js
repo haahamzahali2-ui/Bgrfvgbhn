@@ -55,20 +55,16 @@ function getWeekProgress() {
 // ═══════════════════════════════════
 function renderHome() {
   renderTopbarStats();
-  const sum = summarizeSessions(db.sessions);
-
-  animateCount(document.getElementById('imp-questions'), sum.questions);
-  animateCount(document.getElementById('imp-accuracy'), sum.accuracy, 1200, '%');
-  animateCount(document.getElementById('imp-hours'), Math.round(sum.minutes / 60));
-  animateCount(document.getElementById('imp-mistakes'), db.mistakes.length);
-
   renderCountdown();
   renderTodayStrip();
-  renderTrackerBadges();
-  document.getElementById('homeInsights').innerHTML = insightsHtml(generateInsights().slice(0, 5));
+  document.getElementById('homeInsights').innerHTML = insightsHtml(generateInsights().slice(0, 3));
   renderSectionSnapshot();
-  renderHeatmap();
-  renderMilestones();
+  if (document.getElementById('homeMore').style.display !== 'none') { renderHeatmap(); renderMilestones(); }
+}
+
+function toggleHomeMore() {
+  toggleBlock('homeMore', document.getElementById('homeMoreBtn'), 'Study calendar & milestones');
+  if (document.getElementById('homeMore').style.display !== 'none') { renderHeatmap(); renderMilestones(); }
 }
 
 function renderCountdown() {

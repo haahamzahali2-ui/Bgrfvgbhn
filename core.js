@@ -442,12 +442,37 @@ function renderTopbarStats() {
 
   document.getElementById('stat-questions').textContent = sum.questions.toLocaleString();
   document.getElementById('stat-accuracy').textContent = sum.questions ? `${sum.accuracy}%` : '—';
-  document.getElementById('stat-latest-fl').textContent = latest ? getFLTotal(latest) : '—';
+  const flEl = document.getElementById('stat-latest-fl');
+  if (flEl) flEl.textContent = latest ? getFLTotal(latest) : '—';
   document.getElementById('stat-days-left').textContent = days === null ? '—' : Math.max(days, 0);
   const dueEl = document.getElementById('stat-due');
   dueEl.textContent = due;
   dueEl.classList.toggle('has-due', due > 0);
+  const navDue = document.getElementById('navDueCount');
+  if (navDue) { navDue.textContent = due || ''; navDue.style.display = due ? 'inline-flex' : 'none'; }
+  const qa = document.getElementById('qaReviewSub');
+  if (qa) qa.textContent = due ? `${due} due now` : 'Nothing due';
+  if (typeof renderGroupTabs === 'function') renderGroupTabs();
 }
+
+// Show/hide a block with a "▾ / ▴" toggle button
+function toggleBlock(id, btn, label) {
+  const el = document.getElementById(id);
+  const open = el.style.display === 'none';
+  el.style.display = open ? '' : 'none';
+  if (btn) btn.firstChild.textContent = `${label} ${open ? '▴' : '▾'} `;
+}
+
+function toggleDropdown(btn) {
+  const dd = btn.closest('.dropdown');
+  const wasOpen = dd.classList.contains('open');
+  document.querySelectorAll('.dropdown.open').forEach(d => d.classList.remove('open'));
+  if (!wasOpen) dd.classList.add('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.dropdown')) document.querySelectorAll('.dropdown.open').forEach(d => d.classList.remove('open'));
+  else if (e.target.closest('.dropdown-menu button')) e.target.closest('.dropdown').classList.remove('open');
+});
 
 // Re-render whatever page is visible after data changes
 function refreshAll() {

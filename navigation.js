@@ -5,10 +5,42 @@
 // ═══════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════
+// Four groups, each a big button in the nav. Pages inside a group get a tab row.
+const PAGE_GROUPS = {
+  home:     { pages: [['home', 'Home']] },
+  practice: { pages: [['practice-list', '📚 Practice Sets'], ['fl-list', '🧪 Full-Length Exams']] },
+  mistakes: { pages: [['mistakes', '📝 Mistake Journal'], ['review', '🔁 Review'], ['mistake-insights', '🔍 Patterns']] },
+  progress: { pages: [['analytics', '📊 Analytics'], ['content', '🗺️ Content Checklist']] }
+};
+const lastPageInGroup = {};
+let currentPage = 'home';
+
+function groupOf(page) {
+  return Object.keys(PAGE_GROUPS).find(g => PAGE_GROUPS[g].pages.some(([p]) => p === page)) || 'home';
+}
+
+function showGroup(group) {
+  showPage(lastPageInGroup[group] || PAGE_GROUPS[group].pages[0][0]);
+}
+
+function renderGroupTabs() {
+  const el = document.getElementById('groupTabs');
+  if (!el) return;
+  const group = groupOf(currentPage);
+  document.querySelectorAll('.nav-group').forEach(b => b.classList.toggle('active', b.dataset.group === group));
+  if (group === 'home') { el.style.display = 'none'; return; }
+  const due = getDueMistakes().length;
+  el.style.display = 'flex';
+  el.innerHTML = PAGE_GROUPS[group].pages.map(([p, label]) =>
+    `<button class="group-tab ${p === currentPage ? 'active' : ''}" onclick="showPage('${p}')">${label}${p === 'review' && due ? ` <em class="nav-count">${due}</em>` : ''}</button>`
+  ).join('');
+}
+
 function showPage(name) {
+  currentPage = name;
+  lastPageInGroup[groupOf(name)] = name;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
-  document.querySelectorAll('.nav-link').forEach(a => a.classList.toggle('active', a.dataset.page === name));
   window.scrollTo({ top: 0 });
   if (name === 'review') onEnterReview();
   refreshAll();

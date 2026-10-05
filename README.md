@@ -2,6 +2,19 @@
 
 Track MCAT practice across all four sections. Log **what went wrong** on every miss, review your mistakes with spaced repetition, and see analytics by **MCAT section**, **subject**, and **question provider** (Jack Westin, Khan Academy, UWorld, AAMC, Blueprint, Kaplan, and others). It uses the same look as Helping Hands: the gold and cream palette, Playfair Display with DM Sans, a dark topbar, and dark mode.
 
+## Getting around
+
+Everything is grouped behind four buttons at the top:
+
+| Button | What's inside |
+| --- | --- |
+| 🏠 **Home** | Big buttons for the four things you do most (log practice, log a mistake, review, add a full-length), today's progress, and your top priorities |
+| 📚 **Practice** | Practice Sets · Full-Length Exams |
+| ❌ **Mistakes** | Mistake Journal · Review · Patterns |
+| 📈 **Progress** | Analytics · Content Checklist |
+
+Each group has a tab row at the top of the page. Rarely used options stay tucked away until you need them: **More filters**, **Export**, and **More details** in the mistake form.
+
 ## Pages
 
 ### 🏠 Home dashboard

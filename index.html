@@ -33,10 +33,6 @@
         <div class="topbar-stat-val" id="stat-due">—</div>
         <div class="topbar-stat-lbl">Due Reviews</div>
       </div>
-      <div class="topbar-stat" style="cursor:pointer" onclick="showPage('fl-list')">
-        <div class="topbar-stat-val" id="stat-latest-fl">—</div>
-        <div class="topbar-stat-lbl">Latest FL</div>
-      </div>
       <div class="topbar-stat" style="cursor:pointer" onclick="openSettingsModal()">
         <div class="topbar-stat-val" id="stat-days-left">—</div>
         <div class="topbar-stat-lbl">Days to Test</div>
@@ -54,14 +50,10 @@
 </div>
 <!-- SUB-NAV -->
 <nav class="subnav">
-  <a class="nav-link" data-page="home" onclick="showPage('home')">Home</a>
-  <a class="nav-link" data-page="practice-list" onclick="showPage('practice-list')">Practice Log</a>
-  <a class="nav-link" data-page="mistakes" onclick="showPage('mistakes')">Mistake Journal</a>
-  <a class="nav-link" data-page="mistake-insights" onclick="showPage('mistake-insights')">What Went Wrong</a>
-  <a class="nav-link" data-page="review" onclick="showPage('review')">Review</a>
-  <a class="nav-link" data-page="fl-list" onclick="showPage('fl-list')">Full-Lengths</a>
-  <a class="nav-link" data-page="analytics" onclick="showPage('analytics')">Analytics</a>
-  <a class="nav-link" data-page="content" onclick="showPage('content')">Content</a>
+  <button class="nav-group" data-group="home" onclick="showGroup('home')"><span>🏠</span> Home</button>
+  <button class="nav-group" data-group="practice" onclick="showGroup('practice')"><span>📚</span> Practice</button>
+  <button class="nav-group" data-group="mistakes" onclick="showGroup('mistakes')"><span>❌</span> Mistakes <em class="nav-count" id="navDueCount"></em></button>
+  <button class="nav-group" data-group="progress" onclick="showGroup('progress')"><span>📈</span> Progress</button>
 </nav>
 
 <!-- EASTER EGG -->
@@ -75,113 +67,68 @@
 
 <div class="layout">
   <div class="main">
+    <div class="group-tabs" id="groupTabs" style="display:none;"></div>
 
 <!-- ═══════════════════════════════════════════════════════
      HOME PAGE — dashboard
 ════════════════════════════════════════════════════════ -->
 <div class="page active" id="page-home">
-  <div class="home-hero">
+  <div class="home-hero compact">
     <div class="home-hero-eyebrow">Welcome Back</div>
     <h1>MCAT <em>Prep</em> Tracker</h1>
     <p id="homeCountdown">Set your test date to start the countdown</p>
-    <div class="home-divider"></div>
   </div>
 
+  <div class="home-label">What do you want to do?</div>
+  <div class="quick-actions">
+    <button class="qa-btn primary" onclick="openAddSessionModal()">
+      <span class="qa-icon">➕</span><span class="qa-text"><b>Log Practice</b><small>Record a question set</small></span>
+    </button>
+    <button class="qa-btn" onclick="openAddMistakeModal()">
+      <span class="qa-icon">❌</span><span class="qa-text"><b>Log a Mistake</b><small>What went wrong?</small></span>
+    </button>
+    <button class="qa-btn" onclick="startReview('due')">
+      <span class="qa-icon">🔁</span><span class="qa-text"><b>Review Mistakes</b><small id="qaReviewSub">Nothing due</small></span>
+    </button>
+    <button class="qa-btn" onclick="openAddFLModal()">
+      <span class="qa-icon">🧪</span><span class="qa-text"><b>Add Full-Length</b><small>Record an exam score</small></span>
+    </button>
+  </div>
+
+  <div class="home-label">Today</div>
   <div class="today-strip" id="todayStrip"></div>
-
-  <div class="tracker-grid">
-    <div class="tracker-box compact" onclick="showPage('practice-list')">
-      <span class="tracker-badge" id="badge-practice"></span>
-      <div class="tracker-box-icon"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
-      <h2>Practice Log</h2>
-      <p>Log question sets from AAMC, UWorld, Jack Westin, Khan Academy and more.</p>
-    </div>
-    <div class="tracker-box compact" onclick="showPage('mistakes')">
-      <span class="tracker-badge" id="badge-mistakes"></span>
-      <div class="tracker-box-icon"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
-      <h2>Mistake Journal</h2>
-      <p>Log what went wrong on every miss — error type, concept, and the takeaway.</p>
-    </div>
-    <div class="tracker-box compact" onclick="showPage('review')">
-      <span class="tracker-badge" id="badge-review"></span>
-      <div class="tracker-box-icon"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg></div>
-      <h2>Review Queue</h2>
-      <p>Spaced repetition for your mistakes — each one returns right before you'd forget it.</p>
-    </div>
-    <div class="tracker-box compact" onclick="showPage('fl-list')">
-      <span class="tracker-badge" id="badge-fl"></span>
-      <div class="tracker-box-icon"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 16V12M12 16V8M16 16v-6"/></svg></div>
-      <h2>Full-Length Exams</h2>
-      <p>Scaled scores, predicted score and percentile, and a test-day projection.</p>
-    </div>
-    <div class="tracker-box compact" onclick="showPage('analytics')">
-      <span class="tracker-badge" id="badge-analytics"></span>
-      <div class="tracker-box-icon"><svg viewBox="0 0 24 24"><path d="M3 18l6-6 4 4 8-8"/><path d="M16 6h6v6"/></svg></div>
-      <h2>Analytics</h2>
-      <p>Accuracy and pace by MCAT section, subject, and provider — with drill-downs.</p>
-    </div>
-    <div class="tracker-box compact" onclick="showPage('content')">
-      <span class="tracker-badge" id="badge-content"></span>
-      <div class="tracker-box-icon"><svg viewBox="0 0 24 24"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg></div>
-      <h2>Content Tracker</h2>
-      <p>Work through the high-yield outline, topic by topic, linked to your mistakes.</p>
-    </div>
-  </div>
-
-  <div class="home-impact-row">
-    <div class="impact-chip gold">
-      <div class="impact-chip-val" id="imp-questions">0</div>
-      <div class="impact-chip-lbl">Questions</div>
-      <div class="impact-chip-sub">total completed</div>
-    </div>
-    <div class="impact-chip green">
-      <div class="impact-chip-val" id="imp-accuracy">0%</div>
-      <div class="impact-chip-lbl">Accuracy</div>
-      <div class="impact-chip-sub">all practice</div>
-    </div>
-    <div class="impact-chip blue">
-      <div class="impact-chip-val" id="imp-hours">0</div>
-      <div class="impact-chip-lbl">Hours</div>
-      <div class="impact-chip-sub">timed practice</div>
-    </div>
-    <div class="impact-chip red" style="cursor:pointer" onclick="showPage('mistake-insights')">
-      <div class="impact-chip-val" id="imp-mistakes">0</div>
-      <div class="impact-chip-lbl">Mistakes Logged</div>
-      <div class="impact-chip-sub">click for patterns</div>
-    </div>
-  </div>
 
   <div class="home-two-col">
     <div class="analytics-card">
       <div class="card-head-row">
         <div>
           <div class="analytics-card-title">Coach's Notes</div>
-          <div class="analytics-card-sub">Generated from your practice, mistakes, and exams</div>
+          <div class="analytics-card-sub">Your top priorities right now</div>
         </div>
-        <button class="filter-clear-btn" onclick="showPage('mistake-insights')">All insights →</button>
+        <button class="filter-clear-btn" onclick="showPage('mistake-insights')">See all →</button>
       </div>
       <div class="insights-list" id="homeInsights"></div>
     </div>
     <div>
-      <div class="home-section-title" style="margin-top:0">Section Snapshot</div>
+      <div class="home-label" style="margin-top:0">Sections</div>
       <div class="section-snapshot-row two" id="sectionSnapshotRow"></div>
     </div>
   </div>
 
-  <div class="analytics-card" style="margin-top:28px;">
-    <div class="analytics-card-title">Study Activity</div>
-    <div class="analytics-card-sub">Last 26 weeks — darker means more questions. Hover any day for details.</div>
-    <div id="activityHeatmap"></div>
+  <div class="home-more-toggle">
+    <button class="confetti-btn" id="homeMoreBtn" onclick="toggleHomeMore()">Study calendar &amp; milestones ▾</button>
   </div>
-
-  <div class="analytics-card" style="margin-top:28px;">
-    <div class="card-head-row">
-      <div>
-        <div class="analytics-card-title">Milestones</div>
-        <div class="analytics-card-sub" id="milestonesSub">—</div>
-      </div>
+  <div id="homeMore" style="display:none;">
+    <div class="analytics-card" style="margin-top:20px;">
+      <div class="analytics-card-title">Study Activity</div>
+      <div class="analytics-card-sub">Last 26 weeks — darker means more questions. Hover any day for details.</div>
+      <div id="activityHeatmap"></div>
     </div>
-    <div class="milestones-grid" id="milestonesGrid"></div>
+    <div class="analytics-card" style="margin-top:28px;">
+      <div class="analytics-card-title">Milestones</div>
+      <div class="analytics-card-sub" id="milestonesSub">—</div>
+      <div class="milestones-grid" id="milestonesGrid"></div>
+    </div>
   </div>
 </div><!-- /page-home -->
 
@@ -211,7 +158,7 @@
       <svg class="pt-search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
       <input type="text" id="practiceSearch" class="pt-search-input" placeholder="Search subject, provider, topic, or notes…" oninput="filterSessions()" />
     </div>
-    <button class="analytics-export-btn" onclick="exportSessionsCSV()">⬇ Export CSV</button>
+    <button class="confetti-btn" onclick="exportSessionsCSV()">⬇ Export</button>
   </div>
 
   <div class="pt-filter-row">
@@ -255,8 +202,6 @@
       </div>
     </div>
     <div class="header-actions">
-      <button class="analytics-export-btn" onclick="showPage('mistake-insights')">🔍 Patterns</button>
-      <button class="analytics-export-btn" onclick="startReview('due')">🔁 Review</button>
       <button class="pt-add-btn" onclick="openAddMistakeModal()">
         <span class="pt-add-btn-icon">+</span>
         Log Mistake
@@ -271,32 +216,23 @@
       <svg class="pt-search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
       <input type="text" id="mistakeSearch" class="pt-search-input" placeholder="Search concept, what went wrong, takeaway, tags…" oninput="renderMistakes()" />
     </div>
-    <button class="analytics-export-btn" onclick="exportMistakesAnki()" title="Exports flagged 🃏 mistakes, or everything shown if none are flagged">🃏 Export to Anki</button>
-    <button class="analytics-export-btn" onclick="exportMistakesCSV()">⬇ CSV</button>
+    <button class="confetti-btn" id="mistakeMoreFiltersBtn" onclick="toggleBlock('mistakeMoreFilters', this, 'More filters')">More filters ▾</button>
+    <div class="dropdown">
+      <button class="analytics-export-btn" onclick="toggleDropdown(this)">⬇ Export ▾</button>
+      <div class="dropdown-menu">
+        <button onclick="exportMistakesAnki()">🃏 Anki deck <small>flagged cards, or all shown</small></button>
+        <button onclick="exportMistakesCSV()">📄 Spreadsheet (CSV)</button>
+      </div>
+    </div>
   </div>
 
   <div class="pt-filter-row">
     <div class="pt-filter-group">
-      <span class="pt-filter-label">Root Cause</span>
-      <div class="pt-chip-row">
-        <button class="pt-chip active" onclick="setMistakeFilter('bucket','all',this)">All</button>
-        <button class="pt-chip" onclick="setMistakeFilter('bucket','knowledge',this)"><i class="chip-dot" style="background:#2980B9"></i>Knowledge</button>
-        <button class="pt-chip" onclick="setMistakeFilter('bucket','reasoning',this)"><i class="chip-dot" style="background:#8E44AD"></i>Reasoning</button>
-        <button class="pt-chip" onclick="setMistakeFilter('bucket','execution',this)"><i class="chip-dot" style="background:#D4850A"></i>Execution</button>
-        <button class="pt-chip" onclick="setMistakeFilter('bucket','strategy',this)"><i class="chip-dot" style="background:#C0392B"></i>Strategy</button>
-        <button class="pt-chip" onclick="setMistakeFilter('bucket','timing',this)"><i class="chip-dot" style="background:#16A085"></i>Timing</button>
-        <button class="pt-chip" onclick="setMistakeFilter('bucket','guess',this)"><i class="chip-dot" style="background:#A8893C"></i>Guesses</button>
-      </div>
-    </div>
-  </div>
-  <div class="pt-filter-row">
-    <div class="pt-filter-group">
-      <span class="pt-filter-label">Status</span>
+      <span class="pt-filter-label">Show</span>
       <div class="pt-chip-row">
         <button class="pt-chip active" onclick="setMistakeFilter('status','all',this)">All</button>
         <button class="pt-chip" onclick="setMistakeFilter('status','due',this)">🔁 Due</button>
         <button class="pt-chip" onclick="setMistakeFilter('status','new',this)">New</button>
-        <button class="pt-chip" onclick="setMistakeFilter('status','learning',this)">Learning</button>
         <button class="pt-chip" onclick="setMistakeFilter('status','mastered',this)">🏅 Mastered</button>
         <button class="pt-chip" onclick="setMistakeFilter('status','anki',this)">🃏 Anki</button>
       </div>
@@ -312,16 +248,30 @@
         <button class="pt-chip" onclick="setMistakeFilter('section','ps',this)">P/S</button>
       </div>
     </div>
+    <span class="pt-filter-stats" id="mistakeFilterStats"></span>
+  </div>
+  <div class="pt-filter-row" id="mistakeMoreFilters" style="display:none;">
+    <div class="pt-filter-group">
+      <span class="pt-filter-label">Root Cause</span>
+      <div class="pt-chip-row">
+        <button class="pt-chip active" onclick="setMistakeFilter('bucket','all',this)">All</button>
+        <button class="pt-chip" onclick="setMistakeFilter('bucket','knowledge',this)"><i class="chip-dot" style="background:#2980B9"></i>Knowledge</button>
+        <button class="pt-chip" onclick="setMistakeFilter('bucket','reasoning',this)"><i class="chip-dot" style="background:#8E44AD"></i>Reasoning</button>
+        <button class="pt-chip" onclick="setMistakeFilter('bucket','execution',this)"><i class="chip-dot" style="background:#D4850A"></i>Execution</button>
+        <button class="pt-chip" onclick="setMistakeFilter('bucket','strategy',this)"><i class="chip-dot" style="background:#C0392B"></i>Strategy</button>
+        <button class="pt-chip" onclick="setMistakeFilter('bucket','timing',this)"><i class="chip-dot" style="background:#16A085"></i>Timing</button>
+        <button class="pt-chip" onclick="setMistakeFilter('bucket','guess',this)"><i class="chip-dot" style="background:#A8893C"></i>Guesses</button>
+      </div>
+    </div>
     <div class="pt-filter-divider"></div>
     <div class="pt-filter-group">
       <span class="pt-filter-label">Period</span>
       <div class="pt-chip-row">
         <button class="pt-chip active" onclick="setMistakeFilter('period','all',this)">All</button>
-        <button class="pt-chip" onclick="setMistakeFilter('period','7days',this)">7D</button>
-        <button class="pt-chip" onclick="setMistakeFilter('period','30days',this)">30D</button>
+        <button class="pt-chip" onclick="setMistakeFilter('period','7days',this)">7 Days</button>
+        <button class="pt-chip" onclick="setMistakeFilter('period','30days',this)">30 Days</button>
       </div>
     </div>
-    <span class="pt-filter-stats" id="mistakeFilterStats"></span>
   </div>
   <div class="active-filters" id="mistakeActiveFilters" style="display:none;"></div>
 
@@ -779,60 +729,58 @@
 <div class="modal-overlay" id="mistakeModal">
   <div class="modal wide">
     <h3 id="mistakeModalTitle">Log a Mistake</h3>
-    <div class="modal-sub">The goal isn't the right answer — it's knowing why you missed it so it never happens again</div>
+    <div class="modal-sub">Just pick a subject and what went wrong — everything else is optional.</div>
     <div class="linked-set" id="mkLinkedSet" style="display:none;"></div>
-    <div class="mistake-form-grid">
-      <div>
-        <div class="form-row-pair">
-          <div class="form-row"><label>Date</label><input type="date" id="mk-date" /></div>
-          <div class="form-row">
-            <label>MCAT Section</label>
-            <select id="mk-section" onchange="updateMistakeSubjectOptions()">
-              <option value="cp">Chem/Phys (C/P)</option>
-              <option value="cars">CARS</option>
-              <option value="bb">Bio/Biochem (B/B)</option>
-              <option value="ps">Psych/Soc (P/S)</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-row-pair">
-          <div class="form-row">
-            <label>Subject</label>
-            <input type="text" id="mk-subject" list="mkSubjectOptions" placeholder="e.g. Biochemistry" oninput="updateMistakeConceptOptions()" />
-            <datalist id="mkSubjectOptions"></datalist>
-          </div>
-          <div class="form-row">
-            <label>Provider</label>
-            <input type="text" id="mk-provider" list="mkProviderOptions" placeholder="e.g. UWorld" />
-            <datalist id="mkProviderOptions"></datalist>
-          </div>
-        </div>
-        <div class="form-row-pair">
-          <div class="form-row">
-            <label>Concept / Topic</label>
-            <input type="text" id="mk-concept" list="mkConceptOptions" placeholder="e.g. Enzyme kinetics" />
-            <datalist id="mkConceptOptions"></datalist>
-          </div>
-          <div class="form-row"><label>Question # <span class="label-opt">(optional)</span></label><input type="text" id="mk-qref" placeholder="e.g. Q12, P3 Q4" /></div>
-        </div>
-        <div class="form-row-pair">
-          <div class="form-row"><label>Your Answer</label><div class="answer-chips" id="mkMyAnswer"></div></div>
-          <div class="form-row"><label>Correct Answer</label><div class="answer-chips" id="mkCorrectAnswer"></div></div>
-        </div>
-        <div class="form-row"><label>What was the question asking? <span class="label-opt">(becomes your review prompt)</span></label><textarea id="mk-question" placeholder="e.g. Effect of a competitive inhibitor on Km and Vmax"></textarea></div>
+    <div class="mk-step"><span>1</span> Where was it?</div>
+    <div class="form-row-quad">
+      <div class="form-row">
+        <label>Section</label>
+        <select id="mk-section" onchange="updateMistakeSubjectOptions()">
+          <option value="cp">Chem/Phys (C/P)</option>
+          <option value="cars">CARS</option>
+          <option value="bb">Bio/Biochem (B/B)</option>
+          <option value="ps">Psych/Soc (P/S)</option>
+        </select>
       </div>
-      <div>
-        <div class="form-row">
-          <label>What went wrong?</label>
-          <div class="error-picker" id="mkErrorPicker"></div>
-          <div class="error-tip" id="mkErrorTip" style="display:none;"></div>
-        </div>
-        <div class="form-row"><label>In your words — what happened?</label><textarea id="mk-what" placeholder="e.g. Thought Vmax decreased; mixed it up with noncompetitive"></textarea></div>
-        <div class="form-row"><label>Takeaway — the rule for next time</label><textarea id="mk-takeaway" placeholder="e.g. Competitive: Km ↑, Vmax same. Noncompetitive: Km same, Vmax ↓"></textarea></div>
-        <div class="form-row-pair">
-          <div class="form-row"><label>Tags <span class="label-opt">(comma-separated)</span></label><input type="text" id="mk-tags" placeholder="e.g. high-yield, formula" /></div>
-          <div class="form-row"><label>Anki</label><label class="toggle-row"><input type="checkbox" id="mk-anki" /> <span>🃏 Flag for Anki export</span></label></div>
-        </div>
+      <div class="form-row">
+        <label>Subject</label>
+        <input type="text" id="mk-subject" list="mkSubjectOptions" placeholder="e.g. Biochemistry" oninput="updateMistakeConceptOptions()" />
+        <datalist id="mkSubjectOptions"></datalist>
+      </div>
+      <div class="form-row">
+        <label>Provider</label>
+        <input type="text" id="mk-provider" list="mkProviderOptions" placeholder="e.g. UWorld" />
+        <datalist id="mkProviderOptions"></datalist>
+      </div>
+      <div class="form-row">
+        <label>Concept / Topic</label>
+        <input type="text" id="mk-concept" list="mkConceptOptions" placeholder="e.g. Enzyme kinetics" />
+        <datalist id="mkConceptOptions"></datalist>
+      </div>
+    </div>
+
+    <div class="mk-step"><span>2</span> What went wrong? <small>pick one</small></div>
+    <div class="error-picker" id="mkErrorPicker"></div>
+    <div class="error-tip" id="mkErrorTip" style="display:none;"></div>
+
+    <div class="mk-step"><span>3</span> What will you do next time?</div>
+    <div class="form-row-pair">
+      <div class="form-row"><label>What happened <span class="label-opt">(your words)</span></label><textarea id="mk-what" placeholder="e.g. Thought Vmax decreased; mixed it up with noncompetitive"></textarea></div>
+      <div class="form-row"><label>Takeaway <span class="label-opt">(the rule)</span></label><textarea id="mk-takeaway" placeholder="e.g. Competitive: Km ↑, Vmax same"></textarea></div>
+    </div>
+
+    <button type="button" class="confetti-btn mk-more-btn" id="mkMoreBtn" onclick="toggleBlock('mkMore', this, 'More details')">More details ▾ <small>date, question #, answers, tags, Anki</small></button>
+    <div id="mkMore" style="display:none;">
+      <div class="form-row-quad">
+        <div class="form-row"><label>Date</label><input type="date" id="mk-date" /></div>
+        <div class="form-row"><label>Question #</label><input type="text" id="mk-qref" placeholder="e.g. Q12" /></div>
+        <div class="form-row"><label>Your Answer</label><div class="answer-chips" id="mkMyAnswer"></div></div>
+        <div class="form-row"><label>Correct Answer</label><div class="answer-chips" id="mkCorrectAnswer"></div></div>
+      </div>
+      <div class="form-row"><label>What was the question asking? <span class="label-opt">(becomes your review prompt)</span></label><textarea id="mk-question" placeholder="e.g. Effect of a competitive inhibitor on Km and Vmax"></textarea></div>
+      <div class="form-row-pair">
+        <div class="form-row"><label>Tags <span class="label-opt">(comma-separated)</span></label><input type="text" id="mk-tags" placeholder="e.g. high-yield, formula" /></div>
+        <div class="form-row"><label>Anki</label><label class="toggle-row"><input type="checkbox" id="mk-anki" /> <span>🃏 Flag for Anki export</span></label></div>
       </div>
     </div>
     <div class="mistake-review-info" id="mistakeReviewInfo" style="display:none;"></div>
