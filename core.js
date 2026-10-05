@@ -1,21 +1,27 @@
 // ═══════════════════════════════════
-// CORE — data store, constants, helpers, modals, backups, home stats
+// CORE — data store, constants, helpers, modals, backups, topbar
 // ═══════════════════════════════════
 
 // DATA STORE
 // ═══════════════════════════════════
 const STORAGE_KEY = 'mcat_prep_data';
+const DB_VERSION = 2;
 
-let db = { sessions: [], fullLengths: [], settings: { testDate: '', targetScore: '', targetAccuracy: 75 } };
+let db = {
+  version: DB_VERSION,
+  sessions: [], fullLengths: [], mistakes: [],
+  contentStatus: {}, achievements: {},
+  settings: { testDate: '', targetScore: '', targetAccuracy: 75, weeklyGoal: 300, dailyReviewGoal: 20, promptMistakes: true }
+};
 
 // ═══════════════════════════════════
 // MCAT CONSTANTS
 // ═══════════════════════════════════
 const SECTIONS = [
-  { key: 'cp',   short: 'C/P',  name: 'Chem/Phys',   full: 'Chemical & Physical Foundations of Biological Systems', color: '#2980B9' },
-  { key: 'cars', short: 'CARS', name: 'CARS',        full: 'Critical Analysis & Reasoning Skills',                  color: '#8E44AD' },
-  { key: 'bb',   short: 'B/B',  name: 'Bio/Biochem', full: 'Biological & Biochemical Foundations of Living Systems', color: '#2E7D52' },
-  { key: 'ps',   short: 'P/S',  name: 'Psych/Soc',   full: 'Psychological, Social & Biological Foundations of Behavior', color: '#D4850A' }
+  { key: 'cp',   short: 'C/P',  name: 'Chem/Phys',   full: 'Chemical & Physical Foundations of Biological Systems', color: '#2980B9', questions: 59, minutes: 95 },
+  { key: 'cars', short: 'CARS', name: 'CARS',        full: 'Critical Analysis & Reasoning Skills',                  color: '#8E44AD', questions: 53, minutes: 90 },
+  { key: 'bb',   short: 'B/B',  name: 'Bio/Biochem', full: 'Biological & Biochemical Foundations of Living Systems', color: '#2E7D52', questions: 59, minutes: 95 },
+  { key: 'ps',   short: 'P/S',  name: 'Psych/Soc',   full: 'Psychological, Social & Biological Foundations of Behavior', color: '#D4850A', questions: 59, minutes: 95 }
 ];
 
 const SUBJECTS_BY_SECTION = {
@@ -39,7 +45,45 @@ function getSection(key) { return SECTIONS.find(s => s.key === key) || SECTIONS[
 function getSectionByShort(short) { return SECTIONS.find(s => s.short === short); }
 
 // ═══════════════════════════════════
-// LOAD / SAVE
+// WHAT WENT WRONG — error taxonomy
+// Every error type rolls up into a root-cause bucket, so you can tell
+// "I need more content" apart from "I'm giving away points I already know".
+// ═══════════════════════════════════
+const ERROR_BUCKETS = [
+  { key: 'knowledge', label: 'Knowledge',  color: '#2980B9', blurb: 'You didn\'t know or couldn\'t recall the content.', fix: 'Content review + Anki' },
+  { key: 'reasoning', label: 'Reasoning',  color: '#8E44AD', blurb: 'You knew the content but the logic or data broke down.', fix: 'Passage practice + explain-it-back' },
+  { key: 'execution', label: 'Execution',  color: '#D4850A', blurb: 'Misreads, math slips, careless errors — points you already own.', fix: 'Slow the final read, verify' },
+  { key: 'strategy',  label: 'Strategy',   color: '#C0392B', blurb: 'Test-taking traps: distractors, second-guessing, extreme answers.', fix: 'Predict, eliminate, commit' },
+  { key: 'timing',    label: 'Timing',     color: '#16A085', blurb: 'You rushed or ran out of time.', fix: 'Pacing drills + triage' },
+  { key: 'guess',     label: 'Lucky Guess', color: '#A8893C', blurb: 'Right answer, wrong confidence — still worth reviewing.', fix: 'Review like a miss' }
+];
+
+const ERROR_TYPES = [
+  { key: 'content',     label: 'Content Gap',               icon: '📚', bucket: 'knowledge', tip: 'Re-learn the concept from a content source, then make 2–3 Anki cards in your own words.' },
+  { key: 'recall',      label: 'Forgot / Couldn\'t Recall',  icon: '🧠', bucket: 'knowledge', tip: 'You\'ve seen this before — spaced repetition fixes recall. Review it in the queue until it sticks.' },
+  { key: 'misread_q',   label: 'Misread Question',          icon: '👀', bucket: 'execution', tip: 'Re-read the last sentence of the stem before choosing. Circle NOT / EXCEPT / LEAST.' },
+  { key: 'misread_p',   label: 'Misread Passage / Figure',  icon: '📄', bucket: 'execution', tip: 'Check axes, units, and legends first. Re-find the exact line in the passage before answering.' },
+  { key: 'math',        label: 'Calculation Error',         icon: '🧮', bucket: 'execution', tip: 'Use scientific notation and round aggressively. Sanity-check the order of magnitude.' },
+  { key: 'careless',    label: 'Careless / Silly',          icon: '🤦', bucket: 'execution', tip: 'Before clicking, ask: "Does this answer the exact question asked?" These are free points.' },
+  { key: 'data',        label: 'Data / Graph Interpretation', icon: '📈', bucket: 'reasoning', tip: 'Summarize every figure in one sentence (trend + variables) before reading the questions.' },
+  { key: 'reasoning',   label: 'Reasoning / Logic',         icon: '🧩', bucket: 'reasoning', tip: 'Write out the chain of logic. Find which link you assumed instead of proved.' },
+  { key: 'research',    label: 'Research Design / Stats',   icon: '🔬', bucket: 'reasoning', tip: 'Name the IV, DV, controls, and what the stat actually tests before answering.' },
+  { key: 'distractor',  label: 'Fell for Distractor',       icon: '🎣', bucket: 'strategy',  tip: 'Predict the answer before reading choices. Half-true answers are still wrong.' },
+  { key: 'narrowed',    label: 'Narrowed to 2, Picked Wrong', icon: '⚖️', bucket: 'strategy', tip: 'Find the ONE word that differs between the final two and test it against the passage.' },
+  { key: 'changed',     label: 'Changed Right → Wrong',     icon: '🔄', bucket: 'strategy',  tip: 'Only change an answer when you find concrete new evidence — not a feeling.' },
+  { key: 'scope',       label: 'Out of Scope / Too Extreme', icon: '🎯', bucket: 'strategy', tip: 'Prefer moderate answers the passage directly supports. Watch "always", "never", "only".' },
+  { key: 'timing',      label: 'Rushed / Out of Time',      icon: '⏱️', bucket: 'timing',    tip: 'Triage: flag long calculations and come back. Keep ~1.5 min per question.' },
+  { key: 'guess',       label: 'Lucky Guess (got it right)', icon: '🍀', bucket: 'guess',    tip: 'You got credit but not certainty. Review it like a miss so it\'s real next time.' }
+];
+
+function getErrorType(key) { return ERROR_TYPES.find(e => e.key === key) || ERROR_TYPES[0]; }
+function getBucket(key) { return ERROR_BUCKETS.find(b => b.key === key) || ERROR_BUCKETS[0]; }
+function getMistakeBucket(m) { return getBucket(getErrorType(m.errorType).bucket); }
+// "Avoidable" = execution + strategy + timing — points you lose without a content gap
+const AVOIDABLE_BUCKETS = ['execution', 'strategy', 'timing'];
+
+// ═══════════════════════════════════
+// LOAD / SAVE / MIGRATE
 // ═══════════════════════════════════
 function loadDB() {
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -51,10 +95,32 @@ function normalizeDB() {
   if (!db || typeof db !== 'object') db = {};
   if (!Array.isArray(db.sessions)) db.sessions = [];
   if (!Array.isArray(db.fullLengths)) db.fullLengths = [];
+  if (!Array.isArray(db.mistakes)) db.mistakes = [];
+  if (!db.contentStatus || typeof db.contentStatus !== 'object') db.contentStatus = {};
+  if (!db.achievements || typeof db.achievements !== 'object') db.achievements = {};
   if (!db.settings) db.settings = {};
-  if (!('testDate' in db.settings)) db.settings.testDate = '';
-  if (!('targetScore' in db.settings)) db.settings.targetScore = '';
-  if (!db.settings.targetAccuracy) db.settings.targetAccuracy = 75;
+  const s = db.settings;
+  if (!('testDate' in s)) s.testDate = '';
+  if (!('targetScore' in s)) s.targetScore = '';
+  if (!s.targetAccuracy) s.targetAccuracy = 75;
+  if (!s.weeklyGoal) s.weeklyGoal = 300;
+  if (!s.dailyReviewGoal) s.dailyReviewGoal = 20;
+  if (!('promptMistakes' in s)) s.promptMistakes = true;
+  db.mistakes.forEach(normalizeMistake);
+  db.version = DB_VERSION;
+}
+
+function normalizeMistake(m) {
+  if (!m.review) m.review = {};
+  const r = m.review;
+  if (typeof r.interval !== 'number') r.interval = 0;
+  if (typeof r.ease !== 'number') r.ease = 2.5;
+  if (typeof r.reps !== 'number') r.reps = 0;
+  if (typeof r.lapses !== 'number') r.lapses = 0;
+  if (!r.due) r.due = addDaysISO(m.date || todayISO(), 1);
+  if (!Array.isArray(r.history)) r.history = [];
+  if (!Array.isArray(m.tags)) m.tags = [];
+  return m;
 }
 
 function saveDB() {
@@ -71,15 +137,31 @@ function escapeHtml(input) {
   return String(input ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
 }
 
-function todayISO() {
-  const d = new Date();
+// Safely embed a string as a JS argument inside an inline HTML handler
+function jsArg(v) { return escapeHtml(JSON.stringify(v)); }
+
+function isoFromDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+
+function todayISO() { return isoFromDate(new Date()); }
 
 function parseLocalDate(iso) {
   if (!iso) return null;
   const d = new Date(iso + 'T00:00:00'); // force local timezone, avoid UTC shift
   return isNaN(d) ? null : d;
+}
+
+function addDaysISO(iso, n) {
+  const d = parseLocalDate(iso) || new Date();
+  d.setDate(d.getDate() + n);
+  return isoFromDate(d);
+}
+
+function daysBetween(fromIso, toIso) {
+  const a = parseLocalDate(fromIso), b = parseLocalDate(toIso);
+  if (!a || !b) return null;
+  return Math.round((b - a) / 86400000);
 }
 
 function formatDateShort(iso) {
@@ -88,7 +170,23 @@ function formatDateShort(iso) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function formatDateTiny(iso) {
+  const d = parseLocalDate(iso);
+  return d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
+}
+
+function relativeDay(iso) {
+  const n = daysBetween(todayISO(), iso);
+  if (n === null) return '—';
+  if (n === 0) return 'today';
+  if (n === 1) return 'tomorrow';
+  if (n === -1) return 'yesterday';
+  if (n > 0) return n < 60 ? `in ${n} days` : `in ${Math.round(n / 30)} mo`;
+  return -n < 60 ? `${-n} days ago` : `${Math.round(-n / 30)} mo ago`;
+}
+
 function pct(n, d) { return d > 0 ? Math.round((n / d) * 100) : 0; }
+function plural(n, word, pluralWord) { return `${n} ${n === 1 ? word : (pluralWord || word + 's')}`; }
 
 // 'high' | 'medium' | 'low' relative to the user's target accuracy
 function getAccuracyClass(acc) {
@@ -99,10 +197,8 @@ function getAccuracyClass(acc) {
 }
 
 function getDaysUntilTest() {
-  const d = parseLocalDate(db.settings.testDate);
-  if (!d) return null;
-  const today = parseLocalDate(todayISO());
-  return Math.round((d - today) / 86400000);
+  if (!db.settings.testDate) return null;
+  return daysBetween(todayISO(), db.settings.testDate);
 }
 
 function getFLTotal(fl) { return Number(fl.cp) + Number(fl.cars) + Number(fl.bb) + Number(fl.ps); }
@@ -111,18 +207,15 @@ function getSortedFLs() {
   return [...db.fullLengths].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 }
 
-// Period filter shared by practice log + analytics
+// Period filter shared by practice log, mistakes, and analytics
 function getPeriodStart(filter) {
   const days = { '7days': 7, '30days': 30, '90days': 90 }[filter];
-  if (!days) return null;
-  const d = new Date();
-  d.setDate(d.getDate() - days + 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return days ? addDaysISO(todayISO(), -days + 1) : null;
 }
 
-function filterSessionsByPeriod(sessions, filter) {
+function filterSessionsByPeriod(items, filter) {
   const start = getPeriodStart(filter);
-  return start ? sessions.filter(s => (s.date || '') >= start) : sessions;
+  return start ? items.filter(s => (s.date || '') >= start) : items;
 }
 
 // Totals for any subset of practice sets
@@ -140,25 +233,50 @@ function summarizeSessions(sessions) {
   };
 }
 
+// Target pace for a section in seconds per question (real exam timing)
+function getTargetPace(sectionKey) {
+  const sec = getSection(sectionKey);
+  return Math.round((sec.minutes * 60) / sec.questions);
+}
+
 // ═══════════════════════════════════
-// MODALS / TOAST
+// MODALS / TOAST (with optional action, e.g. Undo)
 // ═══════════════════════════════════
+function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
-function showToast(msg) {
+function showToast(msg, actionLabel, actionFn) {
   const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
+  t.innerHTML = `<span>${escapeHtml(msg)}</span>`;
+  if (actionLabel && actionFn) {
+    const btn = document.createElement('button');
+    btn.className = 'toast-action';
+    btn.textContent = actionLabel;
+    btn.onclick = () => { t.classList.remove('show'); actionFn(); };
+    t.appendChild(btn);
+    t.classList.add('has-action');
+  } else {
+    t.classList.remove('has-action');
+  }
+  t.classList.add('show');
   clearTimeout(showToast._t);
-  showToast._t = setTimeout(() => t.classList.remove('show'), 3000);
+  showToast._t = setTimeout(() => t.classList.remove('show'), actionLabel ? 6000 : 3200);
 }
 
 document.querySelectorAll('.modal-overlay').forEach(o => {
-  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
+  o.addEventListener('mousedown', e => { if (e.target === o) o.classList.remove('open'); });
 });
 
 function fillDatalist(id, values) {
   const el = document.getElementById(id);
   if (el) el.innerHTML = values.map(v => `<option value="${escapeHtml(v)}"></option>`).join('');
+}
+
+// Toggle a chip row: one active button
+function setActiveChip(btn) {
+  if (!btn) return;
+  btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
 }
 
 // ═══════════════════════════════════
@@ -168,18 +286,26 @@ function openSettingsModal() {
   document.getElementById('set-test-date').value = db.settings.testDate || '';
   document.getElementById('set-target').value = db.settings.targetScore || '';
   document.getElementById('set-target-acc').value = db.settings.targetAccuracy || 75;
+  document.getElementById('set-weekly-goal').value = db.settings.weeklyGoal || 300;
+  document.getElementById('set-review-goal').value = db.settings.dailyReviewGoal || 20;
+  document.getElementById('set-prompt-mistakes').checked = !!db.settings.promptMistakes;
   document.getElementById('clearDataBar').classList.remove('show');
-  document.getElementById('settingsModal').classList.add('open');
+  openModal('settingsModal');
 }
 
 function saveSettings() {
   const target = document.getElementById('set-target').value;
   const targetAcc = Number(document.getElementById('set-target-acc').value);
+  const weekly = Number(document.getElementById('set-weekly-goal').value);
+  const reviewGoal = Number(document.getElementById('set-review-goal').value);
   if (target && (Number(target) < 472 || Number(target) > 528)) { showToast('Target score must be between 472 and 528'); return; }
   if (targetAcc && (targetAcc < 1 || targetAcc > 100)) { showToast('Target accuracy must be between 1 and 100'); return; }
   db.settings.testDate = document.getElementById('set-test-date').value;
   db.settings.targetScore = target;
   db.settings.targetAccuracy = targetAcc || 75;
+  db.settings.weeklyGoal = weekly > 0 ? weekly : 300;
+  db.settings.dailyReviewGoal = reviewGoal > 0 ? reviewGoal : 20;
+  db.settings.promptMistakes = document.getElementById('set-prompt-mistakes').checked;
   saveDB();
   closeModal('settingsModal');
   refreshAll();
@@ -200,6 +326,7 @@ function downloadFile(filename, content, type) {
 
 function exportBackupJSON() {
   downloadFile(`mcat-tracker-backup-${todayISO()}.json`, JSON.stringify(db, null, 2), 'application/json');
+  localStorage.setItem('mcat_last_backup', todayISO());
   showToast('Backup downloaded ✓');
 }
 
@@ -213,7 +340,7 @@ function importBackupJSON(input) {
       if (!data || !Array.isArray(data.sessions) || !Array.isArray(data.fullLengths)) throw new Error('bad file');
       db = data; normalizeDB(); saveDB();
       closeModal('settingsModal'); refreshAll();
-      showToast(`Restored ${db.sessions.length} sets and ${db.fullLengths.length} exams ✓`);
+      showToast(`Restored ${plural(db.sessions.length, 'set')}, ${plural(db.mistakes.length, 'mistake')}, ${plural(db.fullLengths.length, 'exam')} ✓`);
     } catch(e) {
       showToast('That file is not a valid MCAT tracker backup.');
     }
@@ -223,7 +350,7 @@ function importBackupJSON(input) {
 }
 
 function clearAllData() {
-  db = { sessions: [], fullLengths: [], settings: db.settings };
+  db = { version: DB_VERSION, sessions: [], fullLengths: [], mistakes: [], contentStatus: {}, achievements: {}, settings: db.settings };
   saveDB();
   closeModal('settingsModal'); refreshAll();
   showToast('All practice data erased');
@@ -236,6 +363,7 @@ function toggleDarkMode() {
   const isDark = document.body.classList.toggle('dark-mode');
   localStorage.setItem('mcat_dark_mode', isDark ? '1' : '0');
   document.getElementById('darkToggleBtn').textContent = isDark ? '☀️' : '🌙';
+  refreshAll();
 }
 if (localStorage.getItem('mcat_dark_mode') === '1') {
   document.body.classList.add('dark-mode');
@@ -297,74 +425,44 @@ function animateCount(el, target, duration = 1200, suffix = '') {
   function update(now) {
     const progress = Math.min((now - startTime) / duration, 1);
     const eased = 1 - Math.pow(1 - progress, 3);
-    el.textContent = Math.round(target * eased) + suffix;
+    el.textContent = Math.round(target * eased).toLocaleString() + suffix;
     if (progress < 1) requestAnimationFrame(update);
   }
   requestAnimationFrame(update);
 }
 
 // ═══════════════════════════════════
-// TOPBAR + HOME STATS
+// TOPBAR
 // ═══════════════════════════════════
 function renderTopbarStats() {
   const sum = summarizeSessions(db.sessions);
-  const fls = getSortedFLs();
-  const latest = fls.slice(-1)[0];
+  const latest = getSortedFLs().slice(-1)[0];
   const days = getDaysUntilTest();
+  const due = typeof getDueMistakes === 'function' ? getDueMistakes().length : 0;
 
   document.getElementById('stat-questions').textContent = sum.questions.toLocaleString();
   document.getElementById('stat-accuracy').textContent = sum.questions ? `${sum.accuracy}%` : '—';
   document.getElementById('stat-latest-fl').textContent = latest ? getFLTotal(latest) : '—';
   document.getElementById('stat-days-left').textContent = days === null ? '—' : Math.max(days, 0);
-}
-
-function renderHomeStats() {
-  renderTopbarStats();
-  const sum = summarizeSessions(db.sessions);
-  const fls = db.fullLengths;
-  const best = fls.length ? Math.max(...fls.map(getFLTotal)) : null;
-
-  animateCount(document.getElementById('imp-questions'), sum.questions);
-  animateCount(document.getElementById('imp-accuracy'), sum.accuracy, 1200, '%');
-  animateCount(document.getElementById('imp-hours'), Math.round(sum.minutes / 60));
-  document.getElementById('imp-best-fl').textContent = best ?? '—';
-
-  const days = getDaysUntilTest();
-  const countdown = document.getElementById('homeCountdown');
-  if (countdown) {
-    if (days === null) countdown.innerHTML = `<a href="#" onclick="openSettingsModal();return false;">Set your test date</a> to start the countdown`;
-    else if (days > 0) countdown.textContent = `${days} day${days !== 1 ? 's' : ''} until test day — ${formatDateShort(db.settings.testDate)}`;
-    else if (days === 0) countdown.textContent = 'Test day is today. You\'ve got this. 🩺';
-    else countdown.textContent = `Test taken ${formatDateShort(db.settings.testDate)} — update your date in settings`;
-  }
-  renderSectionSnapshot();
-}
-
-// One card per MCAT section — practice accuracy + latest full-length section score
-function renderSectionSnapshot() {
-  const row = document.getElementById('sectionSnapshotRow');
-  if (!row) return;
-  const latestFL = getSortedFLs().slice(-1)[0];
-  row.innerHTML = SECTIONS.map(sec => {
-    const sum = summarizeSessions(db.sessions.filter(s => s.section === sec.key));
-    const accClass = sum.questions ? getAccuracyClass(sum.accuracy) : '';
-    return `<div class="snapshot-card" style="--sec-color:${sec.color}" onclick="openAnalyticsFor('section','${sec.short}')">
-      <div class="snapshot-card-top">
-        <span class="section-badge" style="--sec-color:${sec.color}">${sec.short}</span>
-        <span class="snapshot-card-fl">${latestFL ? `FL ${escapeHtml(latestFL[sec.key])}` : ''}</span>
-      </div>
-      <div class="snapshot-card-name">${sec.name}</div>
-      <div class="snapshot-card-val ${accClass}">${sum.questions ? sum.accuracy + '%' : '—'}</div>
-      <div class="snapshot-card-sub">${sum.questions.toLocaleString()} question${sum.questions !== 1 ? 's' : ''} · ${sum.sessions} set${sum.sessions !== 1 ? 's' : ''}</div>
-    </div>`;
-  }).join('');
+  const dueEl = document.getElementById('stat-due');
+  dueEl.textContent = due;
+  dueEl.classList.toggle('has-due', due > 0);
 }
 
 // Re-render whatever page is visible after data changes
 function refreshAll() {
-  renderHomeStats();
-  const active = document.querySelector('.page.active')?.id;
-  if (active === 'page-practice-list') renderSessions();
-  if (active === 'page-fl-list') renderFullLengths();
-  if (active === 'page-analytics') renderAnalytics();
+  renderTopbarStats();
+  if (typeof checkAchievements === 'function') checkAchievements();
+  const active = document.querySelector('.page.active')?.id?.replace('page-', '');
+  const renderers = {
+    'home': () => renderHome(),
+    'practice-list': () => renderSessions(),
+    'fl-list': () => renderFullLengths(),
+    'analytics': () => renderAnalytics(),
+    'mistakes': () => renderMistakes(),
+    'mistake-insights': () => renderMistakeInsights(),
+    'review': () => renderReview(),
+    'content': () => renderContentTracker()
+  };
+  if (renderers[active]) renderers[active]();
 }

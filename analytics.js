@@ -324,7 +324,10 @@ function renderAnalyticsDetail() {
     bc.innerHTML = `
       <button class="back-btn" onclick="exitAnalyticsDrilldown()">&#8592; All ${DIM_LABELS_PLURAL[dim]}</button>
       <span class="drilldown-title">${sec ? `${sec.name} <span class="section-badge" style="--sec-color:${sec.color}">${sec.short}</span>` : escapeHtml(key)}</span>
-      <button class="filter-clear-btn" style="margin-left:auto" onclick="openPracticeListFiltered({ ${dim}: analyticsDrilldown.key })">View all sets →</button>
+      <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="filter-clear-btn" onclick="openPracticeListFiltered({ ${dim}: analyticsDrilldown.key })">View sets →</button>
+        <button class="filter-clear-btn" onclick="openMistakesFiltered({ ${dim}: analyticsDrilldown.key })">View mistakes →</button>
+      </span>
     `;
   }
 
@@ -345,6 +348,14 @@ function renderAnalyticsDetail() {
   lastDetailStats = computeGroupStats(matched, detailSubDim);
   detailBarChartInst = renderAccuracyBarChart('detailBarChart', 'detailBarContainer', lastDetailStats, detailBarChartInst, idx => onDetailRowClick(lastDetailStats[idx].key));
   renderDetailTrendChart(matched, sec ? sec.color : goldPalette.gold);
+
+  // What went wrong in this slice
+  const sliceMistakes = filterSessionsByPeriod(db.mistakes, currentAnalyticsTimeFilter).filter(m => getDimValue(m, dim) === key);
+  const ebTitle = document.getElementById('detailErrorsSub');
+  if (ebTitle) ebTitle.textContent = sliceMistakes.length
+    ? `${plural(sliceMistakes.length, 'logged mistake')} — click a row to open them`
+    : 'No mistakes logged for this slice yet';
+  document.getElementById('detailErrorBreakdown').innerHTML = errorBreakdownHtml(sliceMistakes, { [dim]: key });
 
   detailTableSearchTerm = '';
   detailTableSort = { field: 'questions', dir: 'desc' };

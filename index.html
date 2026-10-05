@@ -4,8 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MCAT Prep Tracker</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23C9A84C'/><text x='32' y='42' font-family='Georgia,serif' font-weight='700' font-size='26' text-anchor='middle' fill='%231A1208'>MC</text></svg>">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -28,6 +29,10 @@
         <div class="topbar-stat-val" id="stat-accuracy">—</div>
         <div class="topbar-stat-lbl">Accuracy</div>
       </div>
+      <div class="topbar-stat" style="cursor:pointer" onclick="showPage('review')">
+        <div class="topbar-stat-val" id="stat-due">—</div>
+        <div class="topbar-stat-lbl">Due Reviews</div>
+      </div>
       <div class="topbar-stat" style="cursor:pointer" onclick="showPage('fl-list')">
         <div class="topbar-stat-val" id="stat-latest-fl">—</div>
         <div class="topbar-stat-lbl">Latest FL</div>
@@ -41,10 +46,24 @@
       <div class="topbar-clock-time" id="topbarClock">--:--</div>
       <div class="topbar-clock-date" id="topbarDate">---</div>
     </div>
+    <button class="dark-toggle palette-trigger" onclick="openPalette()" title="Command palette (Ctrl/⌘ K)">⌕ <span>⌘K</span></button>
+    <button class="dark-toggle timer-btn" id="timerBtn" onclick="toggleTimerPanel()" title="Study timer (T)">⏱</button>
     <button class="dark-toggle" onclick="openSettingsModal()" title="Settings &amp; backup">⚙️</button>
-    <button class="dark-toggle" onclick="toggleDarkMode()" title="Toggle dark mode" id="darkToggleBtn">🌙</button>
+    <button class="dark-toggle" onclick="toggleDarkMode()" title="Toggle dark mode (D)" id="darkToggleBtn">🌙</button>
   </div>
 </div>
+<!-- SUB-NAV -->
+<nav class="subnav">
+  <a class="nav-link" data-page="home" onclick="showPage('home')">Home</a>
+  <a class="nav-link" data-page="practice-list" onclick="showPage('practice-list')">Practice Log</a>
+  <a class="nav-link" data-page="mistakes" onclick="showPage('mistakes')">Mistake Journal</a>
+  <a class="nav-link" data-page="mistake-insights" onclick="showPage('mistake-insights')">What Went Wrong</a>
+  <a class="nav-link" data-page="review" onclick="showPage('review')">Review</a>
+  <a class="nav-link" data-page="fl-list" onclick="showPage('fl-list')">Full-Lengths</a>
+  <a class="nav-link" data-page="analytics" onclick="showPage('analytics')">Analytics</a>
+  <a class="nav-link" data-page="content" onclick="showPage('content')">Content</a>
+</nav>
+
 <!-- EASTER EGG -->
 <div class="easter-egg-overlay" id="easterEggOverlay">
   <div class="easter-egg-text">🩺 Future Doctor 🩺</div>
@@ -58,39 +77,54 @@
   <div class="main">
 
 <!-- ═══════════════════════════════════════════════════════
-     HOME PAGE — top-level tracker selector
+     HOME PAGE — dashboard
 ════════════════════════════════════════════════════════ -->
 <div class="page active" id="page-home">
   <div class="home-hero">
     <div class="home-hero-eyebrow">Welcome Back</div>
-    <h1>MCAT <em>Prep</em><br>Tracker</h1>
+    <h1>MCAT <em>Prep</em> Tracker</h1>
     <p id="homeCountdown">Set your test date to start the countdown</p>
     <div class="home-divider"></div>
   </div>
-  <div class="tracker-select-row three">
-    <div class="tracker-box" onclick="showPage('practice-list')">
-      <div class="tracker-box-icon">
-        <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-      </div>
+
+  <div class="today-strip" id="todayStrip"></div>
+
+  <div class="tracker-grid">
+    <div class="tracker-box compact" onclick="showPage('practice-list')">
+      <span class="tracker-badge" id="badge-practice"></span>
+      <div class="tracker-box-icon"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
       <h2>Practice Log</h2>
       <p>Log question sets from AAMC, UWorld, Jack Westin, Khan Academy and more.</p>
-      <div class="tracker-box-arrow">&#8594;</div>
     </div>
-    <div class="tracker-box" onclick="showPage('fl-list')">
-      <div class="tracker-box-icon">
-        <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 16V12M12 16V8M16 16v-6"/></svg>
-      </div>
+    <div class="tracker-box compact" onclick="showPage('mistakes')">
+      <span class="tracker-badge" id="badge-mistakes"></span>
+      <div class="tracker-box-icon"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
+      <h2>Mistake Journal</h2>
+      <p>Log what went wrong on every miss — error type, concept, and the takeaway.</p>
+    </div>
+    <div class="tracker-box compact" onclick="showPage('review')">
+      <span class="tracker-badge" id="badge-review"></span>
+      <div class="tracker-box-icon"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg></div>
+      <h2>Review Queue</h2>
+      <p>Spaced repetition for your mistakes — each one returns right before you'd forget it.</p>
+    </div>
+    <div class="tracker-box compact" onclick="showPage('fl-list')">
+      <span class="tracker-badge" id="badge-fl"></span>
+      <div class="tracker-box-icon"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 16V12M12 16V8M16 16v-6"/></svg></div>
       <h2>Full-Length Exams</h2>
-      <p>Track scaled scores for every practice test — total and all four sections.</p>
-      <div class="tracker-box-arrow">&#8594;</div>
+      <p>Scaled scores, predicted score and percentile, and a test-day projection.</p>
     </div>
-    <div class="tracker-box" onclick="showPage('analytics')">
-      <div class="tracker-box-icon">
-        <svg viewBox="0 0 24 24"><path d="M3 18l6-6 4 4 8-8"/><path d="M16 6h6v6"/></svg>
-      </div>
+    <div class="tracker-box compact" onclick="showPage('analytics')">
+      <span class="tracker-badge" id="badge-analytics"></span>
+      <div class="tracker-box-icon"><svg viewBox="0 0 24 24"><path d="M3 18l6-6 4 4 8-8"/><path d="M16 6h6v6"/></svg></div>
       <h2>Analytics</h2>
-      <p>Accuracy by MCAT section, by subject, and by question provider — with drill-downs.</p>
-      <div class="tracker-box-arrow">&#8594;</div>
+      <p>Accuracy and pace by MCAT section, subject, and provider — with drill-downs.</p>
+    </div>
+    <div class="tracker-box compact" onclick="showPage('content')">
+      <span class="tracker-badge" id="badge-content"></span>
+      <div class="tracker-box-icon"><svg viewBox="0 0 24 24"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg></div>
+      <h2>Content Tracker</h2>
+      <p>Work through the high-yield outline, topic by topic, linked to your mistakes.</p>
     </div>
   </div>
 
@@ -110,15 +144,45 @@
       <div class="impact-chip-lbl">Hours</div>
       <div class="impact-chip-sub">timed practice</div>
     </div>
-    <div class="impact-chip red" style="cursor:pointer" onclick="showPage('fl-list')">
-      <div class="impact-chip-val" id="imp-best-fl">—</div>
-      <div class="impact-chip-lbl">Best FL</div>
-      <div class="impact-chip-sub">click to view exams</div>
+    <div class="impact-chip red" style="cursor:pointer" onclick="showPage('mistake-insights')">
+      <div class="impact-chip-val" id="imp-mistakes">0</div>
+      <div class="impact-chip-lbl">Mistakes Logged</div>
+      <div class="impact-chip-sub">click for patterns</div>
     </div>
   </div>
 
-  <div class="home-section-title">Section Snapshot</div>
-  <div class="section-snapshot-row" id="sectionSnapshotRow"></div>
+  <div class="home-two-col">
+    <div class="analytics-card">
+      <div class="card-head-row">
+        <div>
+          <div class="analytics-card-title">Coach's Notes</div>
+          <div class="analytics-card-sub">Generated from your practice, mistakes, and exams</div>
+        </div>
+        <button class="filter-clear-btn" onclick="showPage('mistake-insights')">All insights →</button>
+      </div>
+      <div class="insights-list" id="homeInsights"></div>
+    </div>
+    <div>
+      <div class="home-section-title" style="margin-top:0">Section Snapshot</div>
+      <div class="section-snapshot-row two" id="sectionSnapshotRow"></div>
+    </div>
+  </div>
+
+  <div class="analytics-card" style="margin-top:28px;">
+    <div class="analytics-card-title">Study Activity</div>
+    <div class="analytics-card-sub">Last 26 weeks — darker means more questions. Hover any day for details.</div>
+    <div id="activityHeatmap"></div>
+  </div>
+
+  <div class="analytics-card" style="margin-top:28px;">
+    <div class="card-head-row">
+      <div>
+        <div class="analytics-card-title">Milestones</div>
+        <div class="analytics-card-sub" id="milestonesSub">—</div>
+      </div>
+    </div>
+    <div class="milestones-grid" id="milestonesGrid"></div>
+  </div>
 </div><!-- /page-home -->
 
 <!-- ═══════════════════════════════════════════════════════
@@ -133,10 +197,13 @@
         <div class="pt-page-subtitle" id="practiceCountLabel">Loading…</div>
       </div>
     </div>
-    <button class="pt-add-btn" onclick="openAddSessionModal()">
-      <span class="pt-add-btn-icon">+</span>
-      Log Practice
-    </button>
+    <div class="header-actions">
+      <button class="analytics-export-btn" onclick="openTimer()">⏱ Timed set</button>
+      <button class="pt-add-btn" onclick="openAddSessionModal()">
+        <span class="pt-add-btn-icon">+</span>
+        Log Practice
+      </button>
+    </div>
   </div>
 
   <div class="pt-controls-bar">
@@ -176,6 +243,216 @@
 </div><!-- /page-practice-list -->
 
 <!-- ═══════════════════════════════════════════════════════
+     MISTAKE JOURNAL — what went wrong
+════════════════════════════════════════════════════════ -->
+<div class="page" id="page-mistakes">
+  <div class="pt-page-header">
+    <div class="pt-page-header-left">
+      <button class="back-btn" onclick="showPage('home')">&#8592; Home</button>
+      <div>
+        <h2 class="pt-page-title">Mistake Journal</h2>
+        <div class="pt-page-subtitle" id="mistakeCountLabel">Loading…</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="analytics-export-btn" onclick="showPage('mistake-insights')">🔍 Patterns</button>
+      <button class="analytics-export-btn" onclick="startReview('due')">🔁 Review</button>
+      <button class="pt-add-btn" onclick="openAddMistakeModal()">
+        <span class="pt-add-btn-icon">+</span>
+        Log Mistake
+      </button>
+    </div>
+  </div>
+
+  <div class="unlogged-banner" id="unloggedBanner" style="display:none;"></div>
+
+  <div class="pt-controls-bar">
+    <div class="pt-search-wrap">
+      <svg class="pt-search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="mistakeSearch" class="pt-search-input" placeholder="Search concept, what went wrong, takeaway, tags…" oninput="renderMistakes()" />
+    </div>
+    <button class="analytics-export-btn" onclick="exportMistakesAnki()" title="Exports flagged 🃏 mistakes, or everything shown if none are flagged">🃏 Export to Anki</button>
+    <button class="analytics-export-btn" onclick="exportMistakesCSV()">⬇ CSV</button>
+  </div>
+
+  <div class="pt-filter-row">
+    <div class="pt-filter-group">
+      <span class="pt-filter-label">Root Cause</span>
+      <div class="pt-chip-row">
+        <button class="pt-chip active" onclick="setMistakeFilter('bucket','all',this)">All</button>
+        <button class="pt-chip" onclick="setMistakeFilter('bucket','knowledge',this)"><i class="chip-dot" style="background:#2980B9"></i>Knowledge</button>
+        <button class="pt-chip" onclick="setMistakeFilter('bucket','reasoning',this)"><i class="chip-dot" style="background:#8E44AD"></i>Reasoning</button>
+        <button class="pt-chip" onclick="setMistakeFilter('bucket','execution',this)"><i class="chip-dot" style="background:#D4850A"></i>Execution</button>
+        <button class="pt-chip" onclick="setMistakeFilter('bucket','strategy',this)"><i class="chip-dot" style="background:#C0392B"></i>Strategy</button>
+        <button class="pt-chip" onclick="setMistakeFilter('bucket','timing',this)"><i class="chip-dot" style="background:#16A085"></i>Timing</button>
+        <button class="pt-chip" onclick="setMistakeFilter('bucket','guess',this)"><i class="chip-dot" style="background:#A8893C"></i>Guesses</button>
+      </div>
+    </div>
+  </div>
+  <div class="pt-filter-row">
+    <div class="pt-filter-group">
+      <span class="pt-filter-label">Status</span>
+      <div class="pt-chip-row">
+        <button class="pt-chip active" onclick="setMistakeFilter('status','all',this)">All</button>
+        <button class="pt-chip" onclick="setMistakeFilter('status','due',this)">🔁 Due</button>
+        <button class="pt-chip" onclick="setMistakeFilter('status','new',this)">New</button>
+        <button class="pt-chip" onclick="setMistakeFilter('status','learning',this)">Learning</button>
+        <button class="pt-chip" onclick="setMistakeFilter('status','mastered',this)">🏅 Mastered</button>
+        <button class="pt-chip" onclick="setMistakeFilter('status','anki',this)">🃏 Anki</button>
+      </div>
+    </div>
+    <div class="pt-filter-divider"></div>
+    <div class="pt-filter-group">
+      <span class="pt-filter-label">Section</span>
+      <div class="pt-chip-row">
+        <button class="pt-chip active" onclick="setMistakeFilter('section','all',this)">All</button>
+        <button class="pt-chip" onclick="setMistakeFilter('section','cp',this)">C/P</button>
+        <button class="pt-chip" onclick="setMistakeFilter('section','cars',this)">CARS</button>
+        <button class="pt-chip" onclick="setMistakeFilter('section','bb',this)">B/B</button>
+        <button class="pt-chip" onclick="setMistakeFilter('section','ps',this)">P/S</button>
+      </div>
+    </div>
+    <div class="pt-filter-divider"></div>
+    <div class="pt-filter-group">
+      <span class="pt-filter-label">Period</span>
+      <div class="pt-chip-row">
+        <button class="pt-chip active" onclick="setMistakeFilter('period','all',this)">All</button>
+        <button class="pt-chip" onclick="setMistakeFilter('period','7days',this)">7D</button>
+        <button class="pt-chip" onclick="setMistakeFilter('period','30days',this)">30D</button>
+      </div>
+    </div>
+    <span class="pt-filter-stats" id="mistakeFilterStats"></span>
+  </div>
+  <div class="active-filters" id="mistakeActiveFilters" style="display:none;"></div>
+
+  <div class="mistakes-grid" id="mistakesGrid"></div>
+</div><!-- /page-mistakes -->
+
+<!-- ═══════════════════════════════════════════════════════
+     WHAT WENT WRONG — mistake insights
+════════════════════════════════════════════════════════ -->
+<div class="page" id="page-mistake-insights">
+  <div class="section-header">
+    <button class="back-btn" onclick="showPage('mistakes')">&#8592; Mistake Journal</button>
+    <h2>What Went Wrong</h2>
+    <button class="analytics-export-btn" style="margin-left:auto" onclick="printStudyReport()">🖨 Study Report</button>
+  </div>
+
+  <div class="time-filter-bar">
+    <span class="time-filter-label">Period:</span>
+    <button class="time-filter-btn active" onclick="setInsightsPeriod('all',this)">All Time</button>
+    <button class="time-filter-btn" onclick="setInsightsPeriod('7days',this)">Last 7 Days</button>
+    <button class="time-filter-btn" onclick="setInsightsPeriod('30days',this)">Last 30 Days</button>
+    <button class="time-filter-btn" onclick="setInsightsPeriod('90days',this)">Last 90 Days</button>
+    <div class="breakdown-tabs inline" style="margin:0 0 0 auto;">
+      <button class="breakdown-tab active" onclick="setInsightsSection('all', this)">All</button>
+      <button class="breakdown-tab" onclick="setInsightsSection('cp', this)">C/P</button>
+      <button class="breakdown-tab" onclick="setInsightsSection('cars', this)">CARS</button>
+      <button class="breakdown-tab" onclick="setInsightsSection('bb', this)">B/B</button>
+      <button class="breakdown-tab" onclick="setInsightsSection('ps', this)">P/S</button>
+    </div>
+  </div>
+
+  <div class="analytics-summary-row" id="insightKPIs"></div>
+
+  <div id="insightsEmpty" class="patients-empty-state" style="display:none;">
+    <div class="patients-empty-icon">🔍</div>
+    <div class="patients-empty-title">No mistakes logged for this view</div>
+    <div class="patients-empty-sub">Log what went wrong after a set and your patterns will show up here.<br><br><button class="btn-save" onclick="openAddMistakeModal()">Log a mistake</button></div>
+  </div>
+
+  <div id="insightsBody">
+    <div class="analytics-card" style="margin-bottom:28px;">
+      <div class="analytics-card-title">Your Playbook</div>
+      <div class="analytics-card-sub">Your three most common errors and exactly how to fix each one</div>
+      <div class="playbook-grid" id="playbookCards"></div>
+    </div>
+
+    <div class="analytics-grid">
+      <div class="analytics-card">
+        <div class="analytics-card-title">Error Types</div>
+        <div class="analytics-card-sub">How you lose points — click a bar to open those mistakes</div>
+        <div class="chart-scroll"><div class="analytics-chart-container" id="errorTypeContainer"><canvas id="errorTypeChart"></canvas></div></div>
+      </div>
+      <div class="analytics-card">
+        <div class="analytics-card-title">Root Causes</div>
+        <div class="analytics-card-sub">Knowledge gaps need content; everything else is skill you can train</div>
+        <div class="donut-wrap">
+          <div class="donut-canvas"><canvas id="bucketDonutChart"></canvas></div>
+          <div class="bucket-legend" id="bucketLegend"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="analytics-grid">
+      <div class="analytics-card">
+        <div class="analytics-card-title">Root Cause by Section</div>
+        <div class="analytics-card-sub">Each section fails differently — share of each section's misses</div>
+        <div class="analytics-chart-container" style="height:260px;"><canvas id="bucketBySectionChart"></canvas></div>
+      </div>
+      <div class="analytics-card">
+        <div class="analytics-card-title">Mistakes Over Time</div>
+        <div class="analytics-card-sub">Weekly logged mistakes by root cause — watch avoidable errors shrink</div>
+        <div class="analytics-chart-container" style="height:260px;"><canvas id="mistakesWeeklyChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="analytics-grid single">
+      <div class="analytics-card">
+        <div class="analytics-card-title">Provider × Root Cause</div>
+        <div class="analytics-card-sub">Which question sources expose which weaknesses — click a cell to see them</div>
+        <div class="table-scroll" id="providerHeatmap"></div>
+      </div>
+      <div class="analytics-card">
+        <div class="analytics-card-title">Repeat Offenders</div>
+        <div class="analytics-card-sub">Concepts you've missed more than once — these need content review, not more questions</div>
+        <div class="table-scroll">
+          <table class="patient-breakdown-table" id="repeatTable">
+            <thead><tr><th>Concept</th><th>Subject</th><th>Missed</th><th>Main Error</th><th>Last</th><th>Mastered</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="analytics-card">
+    <div class="analytics-card-title">All Coaching Notes</div>
+    <div class="analytics-card-sub">Everything the tracker noticed, most important first</div>
+    <div class="insights-list" id="insightsFullList"></div>
+  </div>
+</div><!-- /page-mistake-insights -->
+
+<!-- ═══════════════════════════════════════════════════════
+     REVIEW QUEUE — spaced repetition
+════════════════════════════════════════════════════════ -->
+<div class="page" id="page-review">
+  <div class="pt-page-header">
+    <div class="pt-page-header-left">
+      <button class="back-btn" onclick="showPage('home')">&#8592; Home</button>
+      <div>
+        <h2 class="pt-page-title">Review Queue</h2>
+        <div class="pt-page-subtitle" id="reviewCountLabel">Loading…</div>
+      </div>
+    </div>
+    <div class="breakdown-tabs inline" style="margin:0">
+      <button class="breakdown-tab active" onclick="setReviewScope('all', this)">All</button>
+      <button class="breakdown-tab" onclick="setReviewScope('cp', this)">C/P</button>
+      <button class="breakdown-tab" onclick="setReviewScope('cars', this)">CARS</button>
+      <button class="breakdown-tab" onclick="setReviewScope('bb', this)">B/B</button>
+      <button class="breakdown-tab" onclick="setReviewScope('ps', this)">P/S</button>
+    </div>
+  </div>
+  <div class="analytics-summary-row" id="reviewKPIs"></div>
+  <div class="review-stage" id="reviewStage"></div>
+  <div class="analytics-card" style="margin-top:28px;">
+    <div class="analytics-card-title">Upcoming Reviews</div>
+    <div class="analytics-card-sub">Cards due over the next two weeks. Again → tomorrow · Good → interval × ease · mastered at 21+ days.</div>
+    <div class="analytics-chart-container" style="height:200px;"><canvas id="reviewForecastChart"></canvas></div>
+  </div>
+</div><!-- /page-review -->
+
+<!-- ═══════════════════════════════════════════════════════
      FULL-LENGTH EXAMS
 ════════════════════════════════════════════════════════ -->
 <div class="page" id="page-fl-list">
@@ -196,7 +473,13 @@
   <div class="analytics-summary-row" id="flKPIs"></div>
 
   <div class="analytics-card" style="margin-bottom:28px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div class="analytics-card-title">Score Outlook</div>
+    <div class="analytics-card-sub">Where you are, where you're headed, and where the points are</div>
+    <div id="scoreOutlook"></div>
+  </div>
+
+  <div class="analytics-card" style="margin-bottom:28px;">
+    <div class="card-head-row">
       <div>
         <div class="analytics-card-title">Score Trend</div>
         <div class="analytics-card-sub" id="flChartSub">Scaled scores across every full-length you've taken</div>
@@ -213,18 +496,22 @@
     <div class="analytics-card">
       <div class="analytics-card-title">By Provider</div>
       <div class="analytics-card-sub">Average and best total score from each test company</div>
-      <table class="patient-breakdown-table no-hover" id="flProviderTable">
-        <thead><tr><th>Provider</th><th>Exams</th><th>Avg. Total</th><th>Best</th><th>Latest</th></tr></thead>
-        <tbody></tbody>
-      </table>
+      <div class="table-scroll">
+        <table class="patient-breakdown-table no-hover" id="flProviderTable">
+          <thead><tr><th>Provider</th><th>Exams</th><th>Avg. Total</th><th>Best</th><th>Latest</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
     <div class="analytics-card">
       <div class="analytics-card-title">By Section</div>
       <div class="analytics-card-sub">Average scaled score per section (118–132) across all exams</div>
-      <table class="patient-breakdown-table no-hover" id="flSectionTable">
-        <thead><tr><th>Section</th><th>Average</th><th>Best</th><th>Latest</th><th>Trend</th></tr></thead>
-        <tbody></tbody>
-      </table>
+      <div class="table-scroll">
+        <table class="patient-breakdown-table no-hover" id="flSectionTable">
+          <thead><tr><th>Section</th><th>Average</th><th>Best</th><th>Latest</th><th>Trend</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -280,10 +567,12 @@
     <div class="analytics-card">
       <div class="analytics-card-title">Focus Areas</div>
       <div class="analytics-card-sub">Your lowest-accuracy subject + section combinations (minimum 10 questions). Click a row to see those sets.</div>
-      <table class="patient-breakdown-table" id="focusTable">
-        <thead><tr><th>Subject</th><th>Section</th><th>Questions</th><th>Accuracy</th><th>Most-Used Provider</th><th>Trend</th></tr></thead>
-        <tbody></tbody>
-      </table>
+      <div class="table-scroll">
+        <table class="patient-breakdown-table" id="focusTable">
+          <thead><tr><th>Subject</th><th>Section</th><th>Questions</th><th>Accuracy</th><th>Most-Used Provider</th><th>Trend</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -291,7 +580,7 @@
   <div id="analyticsDetail" style="display:none;">
     <div class="analytics-grid">
       <div class="analytics-card">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div class="card-head-row">
           <div>
             <div class="analytics-card-title" id="detailChartTitle">—</div>
             <div class="analytics-card-sub">Click a bar to view those practice sets</div>
@@ -309,8 +598,14 @@
       </div>
     </div>
 
+    <div class="analytics-card" style="margin-bottom:28px;">
+      <div class="analytics-card-title">What Went Wrong Here</div>
+      <div class="analytics-card-sub" id="detailErrorsSub">—</div>
+      <div class="error-breakdown" id="detailErrorBreakdown"></div>
+    </div>
+
     <div class="analytics-card">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:6px;">
+      <div class="card-head-row" style="margin-bottom:6px;">
         <div>
           <div class="analytics-card-title">Breakdown Table</div>
           <div class="analytics-card-sub" id="detailTableSub">—</div>
@@ -319,25 +614,90 @@
           <input type="text" id="detailTableSearch" placeholder="Search…" oninput="filterDetailTable()" />
         </div>
       </div>
-      <table class="patient-breakdown-table" id="detailTable">
-        <thead>
-          <tr>
-            <th id="detailTableGroupHeader" data-sort="key" onclick="sortDetailTable('key')">Subject</th>
-            <th data-sort="sessions" onclick="sortDetailTable('sessions')">Sets</th>
-            <th data-sort="questions" onclick="sortDetailTable('questions')">Questions</th>
-            <th data-sort="accuracy" onclick="sortDetailTable('accuracy')">Accuracy</th>
-            <th data-sort="secPerQ" onclick="sortDetailTable('secPerQ')">Pace</th>
-            <th data-sort="trendScore" onclick="sortDetailTable('trendScore')">Trend</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+      <div class="table-scroll">
+        <table class="patient-breakdown-table" id="detailTable">
+          <thead>
+            <tr>
+              <th id="detailTableGroupHeader" data-sort="key" onclick="sortDetailTable('key')">Subject</th>
+              <th data-sort="sessions" onclick="sortDetailTable('sessions')">Sets</th>
+              <th data-sort="questions" onclick="sortDetailTable('questions')">Questions</th>
+              <th data-sort="accuracy" onclick="sortDetailTable('accuracy')">Accuracy</th>
+              <th data-sort="secPerQ" onclick="sortDetailTable('secPerQ')">Pace</th>
+              <th data-sort="trendScore" onclick="sortDetailTable('trendScore')">Trend</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div><!-- /page-analytics -->
 
+<!-- ═══════════════════════════════════════════════════════
+     CONTENT TRACKER — high-yield outline
+════════════════════════════════════════════════════════ -->
+<div class="page" id="page-content">
+  <div class="section-header">
+    <button class="back-btn" onclick="showPage('home')">&#8592; Home</button>
+    <h2>Content Tracker</h2>
+  </div>
+  <div class="analytics-summary-row" id="contentKPIs"></div>
+  <div class="pt-controls-bar">
+    <div class="pt-search-wrap">
+      <svg class="pt-search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="contentSearch" class="pt-search-input" placeholder="Search topics…" oninput="filterContentTopics()" />
+    </div>
+    <button class="confetti-btn" onclick="expandAllContent(true)">Expand all</button>
+    <button class="confetti-btn" onclick="expandAllContent(false)">Collapse all</button>
+  </div>
+  <div class="pt-filter-row">
+    <div class="pt-filter-group">
+      <span class="pt-filter-label">Show</span>
+      <div class="pt-chip-row" id="contentFilterChips">
+        <button class="pt-chip active" data-f="all" onclick="setContentFilter('all',this)">All</button>
+        <button class="pt-chip" data-f="weak" onclick="setContentFilter('weak',this)">🔥 Weak spots</button>
+        <button class="pt-chip" data-f="none" onclick="setContentFilter('none',this)">Not started</button>
+        <button class="pt-chip" data-f="learning" onclick="setContentFilter('learning',this)">Learning</button>
+        <button class="pt-chip" data-f="reviewed" onclick="setContentFilter('reviewed',this)">Reviewed</button>
+        <button class="pt-chip" data-f="confident" onclick="setContentFilter('confident',this)">Confident</button>
+      </div>
+    </div>
+    <span class="pt-filter-stats">Mistake counts link to your journal</span>
+  </div>
+  <div class="content-groups" id="contentGroups"></div>
+</div><!-- /page-content -->
+
   </div><!-- /main -->
 </div><!-- /layout -->
+
+<!-- ═══════════════════════════════════════════════════════
+     STUDY TIMER — floating panel
+════════════════════════════════════════════════════════ -->
+<div class="timer-panel" id="timerPanel">
+  <div class="timer-head">
+    <div class="timer-title">Study Timer</div>
+    <div class="chart-toggle" id="timerModeTabs">
+      <button data-mode="set" onclick="setTimerMode('set')">Timed Set</button>
+      <button data-mode="focus" onclick="setTimerMode('focus')">Focus 25/5</button>
+    </div>
+    <button class="timer-close" onclick="closeTimer()" title="Hide (keeps running)">✕</button>
+  </div>
+  <div id="timerBody"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     COMMAND PALETTE
+════════════════════════════════════════════════════════ -->
+<div class="palette-overlay" id="paletteOverlay" onmousedown="if(event.target===this)closePalette()">
+  <div class="palette">
+    <div class="palette-input-wrap">
+      <span>⌕</span>
+      <input type="text" id="paletteInput" placeholder="Jump to a page, run an action, or search concepts…" oninput="renderPalette()" onkeydown="onPaletteKey(event)" autocomplete="off" />
+      <kbd>Esc</kbd>
+    </div>
+    <div class="palette-list" id="paletteList"></div>
+  </div>
+</div>
 
 <!-- ═══════════════════════════════════════════════════════
      MODALS
@@ -345,7 +705,7 @@
 
 <!-- ADD / EDIT PRACTICE SET MODAL -->
 <div class="modal-overlay" id="sessionModal">
-  <div class="modal" style="max-width:520px;">
+  <div class="modal" style="max-width:540px;">
     <h3 id="sessionModalTitle">Log Practice</h3>
     <div class="modal-sub">Record a question set, passage block, or section bank</div>
     <div class="form-row-pair">
@@ -372,16 +732,17 @@
         <datalist id="providerOptions"></datalist>
       </div>
     </div>
-    <div class="form-row"><label>Topic / Set Name <span style="font-weight:300;text-transform:none;letter-spacing:0">(optional)</span></label><input type="text" id="ses-topic" placeholder="e.g. Enzyme kinetics, UWorld Block 12, Daily CARS passage" /></div>
+    <div class="form-row"><label>Topic / Set Name <span class="label-opt">(optional)</span></label><input type="text" id="ses-topic" placeholder="e.g. Enzyme kinetics, UWorld Block 12, Daily CARS passage" /></div>
     <div class="form-row-triple">
       <div class="form-row"><label>Questions</label><input type="number" min="1" id="ses-total" placeholder="e.g. 20" oninput="updateSessionPreview()" /></div>
       <div class="form-row"><label>Correct</label><input type="number" min="0" id="ses-correct" placeholder="e.g. 15" oninput="updateSessionPreview()" /></div>
       <div class="form-row"><label>Minutes</label><input type="number" min="0" id="ses-minutes" placeholder="e.g. 30" oninput="updateSessionPreview()" /></div>
     </div>
     <div class="live-preview" id="sessionLivePreview"></div>
-    <div class="form-row" style="margin-top:12px;"><label>Notes (optional)</label><textarea id="ses-notes" placeholder="What tripped you up? Concepts to review…"></textarea></div>
+    <div class="form-row" style="margin-top:12px;"><label>Notes (optional)</label><textarea id="ses-notes" placeholder="Overall impressions — log individual misses in the next step"></textarea></div>
+    <div class="session-mistake-info" id="sessionMistakeInfo" style="display:none;"></div>
     <div class="confirm-delete-bar" id="sessionDeleteBar">
-      <p>Are you sure you want to delete this practice set? This cannot be undone.</p>
+      <p>Are you sure you want to delete this practice set? Mistakes logged from it are kept.</p>
       <button class="btn-del-confirm" onclick="confirmDeleteSession()">Delete Set</button>
       <button class="btn-cancel" onclick="document.getElementById('sessionDeleteBar').classList.remove('show')" style="padding:7px 14px">Cancel</button>
     </div>
@@ -393,9 +754,115 @@
   </div>
 </div>
 
+<!-- QUICK LOG — every miss from one set -->
+<div class="modal-overlay" id="quickLogModal">
+  <div class="modal wide">
+    <h3>What went wrong?</h3>
+    <div class="modal-sub quicklog-sub" id="quickLogSub">—</div>
+    <div class="quicklog-legend-label">Tap an error type to fill the next row — or pick per row</div>
+    <div class="quicklog-legend" id="quickLogLegend"></div>
+    <datalist id="qlTopicOptions"></datalist>
+    <div class="quicklog-rows" id="quickLogRows"></div>
+    <div class="quicklog-add">
+      <button class="filter-clear-btn" onclick="addQuickLogRow()">+ Add a miss</button>
+      <button class="filter-clear-btn" onclick="addQuickLogRow(true)">+ Add a lucky guess 🍀</button>
+      <span class="quicklog-note">Rows without an error type are skipped. You can add detail later from the journal.</span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('quickLogModal')">Skip for now</button>
+      <button class="btn-save" onclick="saveQuickLog()">Save Mistakes</button>
+    </div>
+  </div>
+</div>
+
+<!-- DETAILED MISTAKE MODAL -->
+<div class="modal-overlay" id="mistakeModal">
+  <div class="modal wide">
+    <h3 id="mistakeModalTitle">Log a Mistake</h3>
+    <div class="modal-sub">The goal isn't the right answer — it's knowing why you missed it so it never happens again</div>
+    <div class="linked-set" id="mkLinkedSet" style="display:none;"></div>
+    <div class="mistake-form-grid">
+      <div>
+        <div class="form-row-pair">
+          <div class="form-row"><label>Date</label><input type="date" id="mk-date" /></div>
+          <div class="form-row">
+            <label>MCAT Section</label>
+            <select id="mk-section" onchange="updateMistakeSubjectOptions()">
+              <option value="cp">Chem/Phys (C/P)</option>
+              <option value="cars">CARS</option>
+              <option value="bb">Bio/Biochem (B/B)</option>
+              <option value="ps">Psych/Soc (P/S)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row-pair">
+          <div class="form-row">
+            <label>Subject</label>
+            <input type="text" id="mk-subject" list="mkSubjectOptions" placeholder="e.g. Biochemistry" oninput="updateMistakeConceptOptions()" />
+            <datalist id="mkSubjectOptions"></datalist>
+          </div>
+          <div class="form-row">
+            <label>Provider</label>
+            <input type="text" id="mk-provider" list="mkProviderOptions" placeholder="e.g. UWorld" />
+            <datalist id="mkProviderOptions"></datalist>
+          </div>
+        </div>
+        <div class="form-row-pair">
+          <div class="form-row">
+            <label>Concept / Topic</label>
+            <input type="text" id="mk-concept" list="mkConceptOptions" placeholder="e.g. Enzyme kinetics" />
+            <datalist id="mkConceptOptions"></datalist>
+          </div>
+          <div class="form-row"><label>Question # <span class="label-opt">(optional)</span></label><input type="text" id="mk-qref" placeholder="e.g. Q12, P3 Q4" /></div>
+        </div>
+        <div class="form-row-pair">
+          <div class="form-row"><label>Your Answer</label><div class="answer-chips" id="mkMyAnswer"></div></div>
+          <div class="form-row"><label>Correct Answer</label><div class="answer-chips" id="mkCorrectAnswer"></div></div>
+        </div>
+        <div class="form-row"><label>What was the question asking? <span class="label-opt">(becomes your review prompt)</span></label><textarea id="mk-question" placeholder="e.g. Effect of a competitive inhibitor on Km and Vmax"></textarea></div>
+      </div>
+      <div>
+        <div class="form-row">
+          <label>What went wrong?</label>
+          <div class="error-picker" id="mkErrorPicker"></div>
+          <div class="error-tip" id="mkErrorTip" style="display:none;"></div>
+        </div>
+        <div class="form-row"><label>In your words — what happened?</label><textarea id="mk-what" placeholder="e.g. Thought Vmax decreased; mixed it up with noncompetitive"></textarea></div>
+        <div class="form-row"><label>Takeaway — the rule for next time</label><textarea id="mk-takeaway" placeholder="e.g. Competitive: Km ↑, Vmax same. Noncompetitive: Km same, Vmax ↓"></textarea></div>
+        <div class="form-row-pair">
+          <div class="form-row"><label>Tags <span class="label-opt">(comma-separated)</span></label><input type="text" id="mk-tags" placeholder="e.g. high-yield, formula" /></div>
+          <div class="form-row"><label>Anki</label><label class="toggle-row"><input type="checkbox" id="mk-anki" /> <span>🃏 Flag for Anki export</span></label></div>
+        </div>
+      </div>
+    </div>
+    <div class="mistake-review-info" id="mistakeReviewInfo" style="display:none;"></div>
+    <div class="confirm-delete-bar" id="mistakeDeleteBar">
+      <p>Delete this mistake and its review history?</p>
+      <button class="btn-del-confirm" onclick="confirmDeleteMistake()">Delete Mistake</button>
+      <button class="btn-cancel" onclick="document.getElementById('mistakeDeleteBar').classList.remove('show')" style="padding:7px 14px">Cancel</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="mistakeDeleteTrigger" onclick="document.getElementById('mistakeDeleteBar').classList.add('show')" style="display:none;color:var(--alert-red);border-color:#f3b0aa;">Delete</button>
+      <button class="btn-cancel" onclick="closeModal('mistakeModal')">Cancel</button>
+      <button class="btn-cancel" onclick="saveMistake(true)">Save &amp; Add Another</button>
+      <button class="btn-save" onclick="saveMistake(false)">Save Mistake</button>
+    </div>
+  </div>
+</div>
+
+<!-- PICK A SET WITH UNLOGGED MISSES -->
+<div class="modal-overlay" id="unloggedModal">
+  <div class="modal" style="max-width:600px;">
+    <h3>Unlogged Misses</h3>
+    <div class="modal-sub">Pick a set to log what went wrong — most recent first</div>
+    <div class="unlogged-list" id="unloggedList"></div>
+    <div class="modal-actions"><button class="btn-cancel" onclick="closeModal('unloggedModal')">Close</button></div>
+  </div>
+</div>
+
 <!-- ADD / EDIT FULL-LENGTH MODAL -->
 <div class="modal-overlay" id="flModal">
-  <div class="modal" style="max-width:520px;">
+  <div class="modal" style="max-width:540px;">
     <h3 id="flModalTitle">Add Full-Length</h3>
     <div class="modal-sub">Scaled section scores range from 118 to 132</div>
     <div class="form-row-pair">
@@ -416,7 +883,8 @@
       <div class="form-row"><label>Psych/Soc</label><input type="number" min="118" max="132" id="fl-ps" placeholder="118–132" oninput="updateFLPreview()" /></div>
     </div>
     <div class="live-preview" id="flLivePreview"></div>
-    <div class="form-row" style="margin-top:12px;"><label>Notes (optional)</label><textarea id="fl-notes" placeholder="Timing, energy, sections that felt off…"></textarea></div>
+    <div class="form-row" style="margin-top:12px;"><label>Notes (optional)</label><textarea id="fl-notes" placeholder="Timing, energy, sleep, sections that felt off…"></textarea></div>
+    <div class="session-mistake-info row" id="flMistakeInfo" style="display:none;"></div>
     <div class="confirm-delete-bar" id="flDeleteBar">
       <p>Are you sure you want to delete this exam? This cannot be undone.</p>
       <button class="btn-del-confirm" onclick="confirmDeleteFL()">Delete Exam</button>
@@ -432,27 +900,33 @@
 
 <!-- SETTINGS / BACKUP MODAL -->
 <div class="modal-overlay" id="settingsModal">
-  <div class="modal" style="max-width:520px;">
+  <div class="modal" style="max-width:560px;">
     <h3>Settings</h3>
-    <div class="modal-sub">Your test date, goal, and data backups</div>
+    <div class="modal-sub">Your test date, goals, and data backups</div>
     <div class="form-row-pair">
       <div class="form-row"><label>Test Date</label><input type="date" id="set-test-date" /></div>
       <div class="form-row"><label>Target Score</label><input type="number" min="472" max="528" id="set-target" placeholder="e.g. 515" /></div>
     </div>
-    <div class="form-row"><label>Target Accuracy (%)</label><input type="number" min="1" max="100" id="set-target-acc" placeholder="e.g. 75" /></div>
+    <div class="form-row-triple">
+      <div class="form-row"><label>Target Accuracy %</label><input type="number" min="1" max="100" id="set-target-acc" placeholder="75" /></div>
+      <div class="form-row"><label>Weekly Q Goal</label><input type="number" min="1" id="set-weekly-goal" placeholder="300" /></div>
+      <div class="form-row"><label>Daily Reviews</label><input type="number" min="1" id="set-review-goal" placeholder="20" /></div>
+    </div>
+    <label class="toggle-row"><input type="checkbox" id="set-prompt-mistakes" /> <span>After logging a set with misses, open <strong>"What went wrong?"</strong> right away</span></label>
     <div class="gold-line" style="margin:22px 0;"></div>
-    <div class="settings-data-label">Your data lives in this browser. Back it up regularly.</div>
+    <div class="settings-data-label">Your data lives in this browser. Back it up regularly — especially before switching devices.</div>
     <div class="settings-data-row">
       <button class="analytics-export-btn" onclick="exportBackupJSON()">⬇ Download Backup</button>
       <button class="analytics-export-btn" onclick="document.getElementById('restoreFileInput').click()">⬆ Restore Backup</button>
       <input type="file" id="restoreFileInput" accept="application/json,.json" style="display:none" onchange="importBackupJSON(this)" />
+      <button class="analytics-export-btn" onclick="closeModal('settingsModal');printStudyReport()">🖨 Study Report</button>
     </div>
     <div class="settings-data-row">
       <button class="confetti-btn" onclick="loadSampleData()">✨ Load Sample Data</button>
       <button class="confetti-btn" style="color:var(--alert-red);" onclick="document.getElementById('clearDataBar').classList.add('show')">Clear All Data</button>
     </div>
     <div class="confirm-delete-bar" id="clearDataBar">
-      <p>This permanently erases every practice set and exam stored in this browser. Download a backup first if you want to keep anything.</p>
+      <p>This permanently erases every practice set, mistake, and exam stored in this browser. Download a backup first if you want to keep anything.</p>
       <button class="btn-del-confirm" onclick="clearAllData()">Erase Everything</button>
       <button class="btn-cancel" onclick="document.getElementById('clearDataBar').classList.remove('show')" style="padding:7px 14px">Cancel</button>
     </div>
@@ -463,14 +937,25 @@
   </div>
 </div>
 
+<div class="print-report" id="printReport"></div>
 <div class="kbd-hint" id="kbdHint"></div>
 <div class="toast" id="toast"></div>
 
 <script src="core.js"></script>
 <script src="charts.js"></script>
+<script src="content.js"></script>
 <script src="practice.js"></script>
+<script src="mistakes.js"></script>
+<script src="review.js"></script>
+<script src="insights.js"></script>
 <script src="fullLengths.js"></script>
 <script src="analytics.js"></script>
+<script src="home.js"></script>
+<script src="achievements.js"></script>
+<script src="timer.js"></script>
+<script src="palette.js"></script>
+<script src="report.js"></script>
+<script src="sample.js"></script>
 <script src="navigation.js"></script>
 </body>
 </html>
