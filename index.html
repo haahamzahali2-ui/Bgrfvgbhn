@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MCAT Prep Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-left" style="cursor:pointer" onclick="showPage('home')">
+    <div class="topbar-logo">MC</div>
+    <div class="topbar-wordmark">
+      <div class="topbar-title">MCAT Prep</div>
+      <div class="topbar-subtitle">Progress Tracker</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-stats-group">
+      <div class="topbar-stat">
+        <div class="topbar-stat-val" id="stat-questions">—</div>
+        <div class="topbar-stat-lbl">Questions</div>
+      </div>
+      <div class="topbar-stat">
+        <div class="topbar-stat-val" id="stat-accuracy">—</div>
+        <div class="topbar-stat-lbl">Accuracy</div>
+      </div>
+      <div class="topbar-stat" style="cursor:pointer" onclick="showPage('fl-list')">
+        <div class="topbar-stat-val" id="stat-latest-fl">—</div>
+        <div class="topbar-stat-lbl">Latest FL</div>
+      </div>
+      <div class="topbar-stat" style="cursor:pointer" onclick="openSettingsModal()">
+        <div class="topbar-stat-val" id="stat-days-left">—</div>
+        <div class="topbar-stat-lbl">Days to Test</div>
+      </div>
+    </div>
+    <div class="topbar-clock">
+      <div class="topbar-clock-time" id="topbarClock">--:--</div>
+      <div class="topbar-clock-date" id="topbarDate">---</div>
+    </div>
+    <button class="dark-toggle" onclick="openSettingsModal()" title="Settings &amp; backup">⚙️</button>
+    <button class="dark-toggle" onclick="toggleDarkMode()" title="Toggle dark mode" id="darkToggleBtn">🌙</button>
+  </div>
+</div>
+<!-- EASTER EGG -->
+<div class="easter-egg-overlay" id="easterEggOverlay">
+  <div class="easter-egg-text">🩺 Future Doctor 🩺</div>
+  <div class="easter-egg-sub">Every question gets you one step closer</div>
+  <button class="easter-egg-close" onclick="document.getElementById('easterEggOverlay').classList.remove('show')">Keep Going ›</button>
+</div>
+
+<canvas id="confetti-canvas"></canvas>
+
+<div class="layout">
+  <div class="main">
+
+<!-- ═══════════════════════════════════════════════════════
+     HOME PAGE — top-level tracker selector
+════════════════════════════════════════════════════════ -->
+<div class="page active" id="page-home">
+  <div class="home-hero">
+    <div class="home-hero-eyebrow">Welcome Back</div>
+    <h1>MCAT <em>Prep</em><br>Tracker</h1>
+    <p id="homeCountdown">Set your test date to start the countdown</p>
+    <div class="home-divider"></div>
+  </div>
+  <div class="tracker-select-row three">
+    <div class="tracker-box" onclick="showPage('practice-list')">
+      <div class="tracker-box-icon">
+        <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      </div>
+      <h2>Practice Log</h2>
+      <p>Log question sets from AAMC, UWorld, Jack Westin, Khan Academy and more.</p>
+      <div class="tracker-box-arrow">&#8594;</div>
+    </div>
+    <div class="tracker-box" onclick="showPage('fl-list')">
+      <div class="tracker-box-icon">
+        <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 16V12M12 16V8M16 16v-6"/></svg>
+      </div>
+      <h2>Full-Length Exams</h2>
+      <p>Track scaled scores for every practice test — total and all four sections.</p>
+      <div class="tracker-box-arrow">&#8594;</div>
+    </div>
+    <div class="tracker-box" onclick="showPage('analytics')">
+      <div class="tracker-box-icon">
+        <svg viewBox="0 0 24 24"><path d="M3 18l6-6 4 4 8-8"/><path d="M16 6h6v6"/></svg>
+      </div>
+      <h2>Analytics</h2>
+      <p>Accuracy by MCAT section, by subject, and by question provider — with drill-downs.</p>
+      <div class="tracker-box-arrow">&#8594;</div>
+    </div>
+  </div>
+
+  <div class="home-impact-row">
+    <div class="impact-chip gold">
+      <div class="impact-chip-val" id="imp-questions">0</div>
+      <div class="impact-chip-lbl">Questions</div>
+      <div class="impact-chip-sub">total completed</div>
+    </div>
+    <div class="impact-chip green">
+      <div class="impact-chip-val" id="imp-accuracy">0%</div>
+      <div class="impact-chip-lbl">Accuracy</div>
+      <div class="impact-chip-sub">all practice</div>
+    </div>
+    <div class="impact-chip blue">
+      <div class="impact-chip-val" id="imp-hours">0</div>
+      <div class="impact-chip-lbl">Hours</div>
+      <div class="impact-chip-sub">timed practice</div>
+    </div>
+    <div class="impact-chip red" style="cursor:pointer" onclick="showPage('fl-list')">
+      <div class="impact-chip-val" id="imp-best-fl">—</div>
+      <div class="impact-chip-lbl">Best FL</div>
+      <div class="impact-chip-sub">click to view exams</div>
+    </div>
+  </div>
+
+  <div class="home-section-title">Section Snapshot</div>
+  <div class="section-snapshot-row" id="sectionSnapshotRow"></div>
+</div><!-- /page-home -->
+
+<!-- ═══════════════════════════════════════════════════════
+     PRACTICE LOG — view / add / edit practice sets
+════════════════════════════════════════════════════════ -->
+<div class="page" id="page-practice-list">
+  <div class="pt-page-header">
+    <div class="pt-page-header-left">
+      <button class="back-btn" onclick="showPage('home')">&#8592; Home</button>
+      <div>
+        <h2 class="pt-page-title">Practice Log</h2>
+        <div class="pt-page-subtitle" id="practiceCountLabel">Loading…</div>
+      </div>
+    </div>
+    <button class="pt-add-btn" onclick="openAddSessionModal()">
+      <span class="pt-add-btn-icon">+</span>
+      Log Practice
+    </button>
+  </div>
+
+  <div class="pt-controls-bar">
+    <div class="pt-search-wrap">
+      <svg class="pt-search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="practiceSearch" class="pt-search-input" placeholder="Search subject, provider, topic, or notes…" oninput="filterSessions()" />
+    </div>
+    <button class="analytics-export-btn" onclick="exportSessionsCSV()">⬇ Export CSV</button>
+  </div>
+
+  <div class="pt-filter-row">
+    <div class="pt-filter-group">
+      <span class="pt-filter-label">Section</span>
+      <div class="pt-chip-row" id="practiceSectionChips">
+        <button class="pt-chip active" onclick="setPracticeSectionFilter('all',this)">All</button>
+        <button class="pt-chip" onclick="setPracticeSectionFilter('cp',this)">C/P</button>
+        <button class="pt-chip" onclick="setPracticeSectionFilter('cars',this)">CARS</button>
+        <button class="pt-chip" onclick="setPracticeSectionFilter('bb',this)">B/B</button>
+        <button class="pt-chip" onclick="setPracticeSectionFilter('ps',this)">P/S</button>
+      </div>
+    </div>
+    <div class="pt-filter-divider"></div>
+    <div class="pt-filter-group">
+      <span class="pt-filter-label">Period</span>
+      <div class="pt-chip-row" id="practicePeriodChips">
+        <button class="pt-chip active" onclick="setPracticePeriodFilter('all',this)">All Time</button>
+        <button class="pt-chip" onclick="setPracticePeriodFilter('7days',this)">7 Days</button>
+        <button class="pt-chip" onclick="setPracticePeriodFilter('30days',this)">30 Days</button>
+        <button class="pt-chip" onclick="setPracticePeriodFilter('90days',this)">90 Days</button>
+      </div>
+    </div>
+    <span class="pt-filter-stats" id="practiceFilterStats"></span>
+  </div>
+  <div class="active-filters" id="practiceActiveFilters" style="display:none;"></div>
+
+  <div class="sessions-grid" id="sessionsGrid"></div>
+</div><!-- /page-practice-list -->
+
+<!-- ═══════════════════════════════════════════════════════
+     FULL-LENGTH EXAMS
+════════════════════════════════════════════════════════ -->
+<div class="page" id="page-fl-list">
+  <div class="pt-page-header">
+    <div class="pt-page-header-left">
+      <button class="back-btn" onclick="showPage('home')">&#8592; Home</button>
+      <div>
+        <h2 class="pt-page-title">Full-Length Exams</h2>
+        <div class="pt-page-subtitle" id="flCountLabel">Loading…</div>
+      </div>
+    </div>
+    <button class="pt-add-btn" onclick="openAddFLModal()">
+      <span class="pt-add-btn-icon">+</span>
+      Add Full-Length
+    </button>
+  </div>
+
+  <div class="analytics-summary-row" id="flKPIs"></div>
+
+  <div class="analytics-card" style="margin-bottom:28px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div>
+        <div class="analytics-card-title">Score Trend</div>
+        <div class="analytics-card-sub" id="flChartSub">Scaled scores across every full-length you've taken</div>
+      </div>
+      <div class="chart-toggle" id="flChartToggle">
+        <button class="active" onclick="setFLChartMode('total', this)">Total</button>
+        <button onclick="setFLChartMode('sections', this)">Sections</button>
+      </div>
+    </div>
+    <div class="analytics-chart-container" style="height:300px;"><canvas id="flTrendChart"></canvas></div>
+  </div>
+
+  <div class="analytics-grid">
+    <div class="analytics-card">
+      <div class="analytics-card-title">By Provider</div>
+      <div class="analytics-card-sub">Average and best total score from each test company</div>
+      <table class="patient-breakdown-table no-hover" id="flProviderTable">
+        <thead><tr><th>Provider</th><th>Exams</th><th>Avg. Total</th><th>Best</th><th>Latest</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="analytics-card">
+      <div class="analytics-card-title">By Section</div>
+      <div class="analytics-card-sub">Average scaled score per section (118–132) across all exams</div>
+      <table class="patient-breakdown-table no-hover" id="flSectionTable">
+        <thead><tr><th>Section</th><th>Average</th><th>Best</th><th>Latest</th><th>Trend</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="sessions-grid" id="flGrid"></div>
+</div><!-- /page-fl-list -->
+
+<!-- ═══════════════════════════════════════════════════════
+     ANALYTICS — section / subject / provider
+════════════════════════════════════════════════════════ -->
+<div class="page" id="page-analytics">
+  <div class="section-header">
+    <button class="back-btn" onclick="showPage('home')">&#8592; Home</button>
+    <h2>Practice Analytics</h2>
+  </div>
+
+  <div class="time-filter-bar">
+    <span class="time-filter-label">Period:</span>
+    <button class="time-filter-btn active" onclick="setAnalyticsTimeFilter('all',this)">All Time</button>
+    <button class="time-filter-btn" onclick="setAnalyticsTimeFilter('7days',this)">Last 7 Days</button>
+    <button class="time-filter-btn" onclick="setAnalyticsTimeFilter('30days',this)">Last 30 Days</button>
+    <button class="time-filter-btn" onclick="setAnalyticsTimeFilter('90days',this)">Last 90 Days</button>
+    <span class="time-filter-stats" id="analyticsTimeStats"></span>
+  </div>
+
+  <div class="drilldown-breadcrumb" id="drilldownBreadcrumb" style="display:none;"></div>
+
+  <div class="analytics-summary-row" id="analyticsKPIs"></div>
+
+  <!-- OVERVIEW: pick a section, subject, or provider -->
+  <div id="analyticsOverview">
+    <div class="breakdown-tabs" id="analyticsDimTabs" style="margin-bottom:20px;">
+      <button class="breakdown-tab active" onclick="setAnalyticsDim('section', this)">By MCAT Section</button>
+      <button class="breakdown-tab" onclick="setAnalyticsDim('subject', this)">By Subject</button>
+      <button class="breakdown-tab" onclick="setAnalyticsDim('provider', this)">By Provider</button>
+    </div>
+    <div class="group-grid" id="groupGrid"></div>
+
+    <div class="analytics-grid" style="margin-top:28px;">
+      <div class="analytics-card">
+        <div class="analytics-card-title" id="overviewBarTitle">Accuracy by Section</div>
+        <div class="analytics-card-sub">Percent correct — click a bar to drill in</div>
+        <div class="chart-scroll">
+          <div class="analytics-chart-container" id="overviewBarContainer"><canvas id="overviewBarChart"></canvas></div>
+        </div>
+      </div>
+      <div class="analytics-card">
+        <div class="analytics-card-title">Accuracy Over Time</div>
+        <div class="analytics-card-sub" id="overviewTrendSub">Weekly accuracy, top groups by volume</div>
+        <div class="analytics-chart-container"><canvas id="overviewTrendChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="analytics-card">
+      <div class="analytics-card-title">Focus Areas</div>
+      <div class="analytics-card-sub">Your lowest-accuracy subject + section combinations (minimum 10 questions). Click a row to see those sets.</div>
+      <table class="patient-breakdown-table" id="focusTable">
+        <thead><tr><th>Subject</th><th>Section</th><th>Questions</th><th>Accuracy</th><th>Most-Used Provider</th><th>Trend</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- DETAIL: shown after clicking a section / subject / provider -->
+  <div id="analyticsDetail" style="display:none;">
+    <div class="analytics-grid">
+      <div class="analytics-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+          <div>
+            <div class="analytics-card-title" id="detailChartTitle">—</div>
+            <div class="analytics-card-sub">Click a bar to view those practice sets</div>
+          </div>
+          <div class="chart-toggle" id="detailSubDimToggle"></div>
+        </div>
+        <div class="chart-scroll">
+          <div class="analytics-chart-container" id="detailBarContainer"><canvas id="detailBarChart"></canvas></div>
+        </div>
+      </div>
+      <div class="analytics-card">
+        <div class="analytics-card-title">Accuracy Over Time</div>
+        <div class="analytics-card-sub">Weekly accuracy (line) and questions done (bars)</div>
+        <div class="analytics-chart-container"><canvas id="detailTrendChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="analytics-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:6px;">
+        <div>
+          <div class="analytics-card-title">Breakdown Table</div>
+          <div class="analytics-card-sub" id="detailTableSub">—</div>
+        </div>
+        <div class="table-search-wrap">
+          <input type="text" id="detailTableSearch" placeholder="Search…" oninput="filterDetailTable()" />
+        </div>
+      </div>
+      <table class="patient-breakdown-table" id="detailTable">
+        <thead>
+          <tr>
+            <th id="detailTableGroupHeader" data-sort="key" onclick="sortDetailTable('key')">Subject</th>
+            <th data-sort="sessions" onclick="sortDetailTable('sessions')">Sets</th>
+            <th data-sort="questions" onclick="sortDetailTable('questions')">Questions</th>
+            <th data-sort="accuracy" onclick="sortDetailTable('accuracy')">Accuracy</th>
+            <th data-sort="secPerQ" onclick="sortDetailTable('secPerQ')">Pace</th>
+            <th data-sort="trendScore" onclick="sortDetailTable('trendScore')">Trend</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /page-analytics -->
+
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<!-- ═══════════════════════════════════════════════════════
+     MODALS
+════════════════════════════════════════════════════════ -->
+
+<!-- ADD / EDIT PRACTICE SET MODAL -->
+<div class="modal-overlay" id="sessionModal">
+  <div class="modal" style="max-width:520px;">
+    <h3 id="sessionModalTitle">Log Practice</h3>
+    <div class="modal-sub">Record a question set, passage block, or section bank</div>
+    <div class="form-row-pair">
+      <div class="form-row"><label>Date</label><input type="date" id="ses-date" /></div>
+      <div class="form-row">
+        <label>MCAT Section</label>
+        <select id="ses-section" onchange="updateSubjectOptions()">
+          <option value="cp">Chem/Phys (C/P)</option>
+          <option value="cars">CARS</option>
+          <option value="bb">Bio/Biochem (B/B)</option>
+          <option value="ps">Psych/Soc (P/S)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row-pair">
+      <div class="form-row">
+        <label>Subject</label>
+        <input type="text" id="ses-subject" placeholder="e.g. Biochemistry" list="subjectOptions" />
+        <datalist id="subjectOptions"></datalist>
+      </div>
+      <div class="form-row">
+        <label>Provider</label>
+        <input type="text" id="ses-provider" placeholder="e.g. Jack Westin" list="providerOptions" />
+        <datalist id="providerOptions"></datalist>
+      </div>
+    </div>
+    <div class="form-row"><label>Topic / Set Name <span style="font-weight:300;text-transform:none;letter-spacing:0">(optional)</span></label><input type="text" id="ses-topic" placeholder="e.g. Enzyme kinetics, UWorld Block 12, Daily CARS passage" /></div>
+    <div class="form-row-triple">
+      <div class="form-row"><label>Questions</label><input type="number" min="1" id="ses-total" placeholder="e.g. 20" oninput="updateSessionPreview()" /></div>
+      <div class="form-row"><label>Correct</label><input type="number" min="0" id="ses-correct" placeholder="e.g. 15" oninput="updateSessionPreview()" /></div>
+      <div class="form-row"><label>Minutes</label><input type="number" min="0" id="ses-minutes" placeholder="e.g. 30" oninput="updateSessionPreview()" /></div>
+    </div>
+    <div class="live-preview" id="sessionLivePreview"></div>
+    <div class="form-row" style="margin-top:12px;"><label>Notes (optional)</label><textarea id="ses-notes" placeholder="What tripped you up? Concepts to review…"></textarea></div>
+    <div class="confirm-delete-bar" id="sessionDeleteBar">
+      <p>Are you sure you want to delete this practice set? This cannot be undone.</p>
+      <button class="btn-del-confirm" onclick="confirmDeleteSession()">Delete Set</button>
+      <button class="btn-cancel" onclick="document.getElementById('sessionDeleteBar').classList.remove('show')" style="padding:7px 14px">Cancel</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="sessionDeleteTrigger" onclick="document.getElementById('sessionDeleteBar').classList.add('show')" style="display:none;color:var(--alert-red);border-color:#f3b0aa;">Delete</button>
+      <button class="btn-cancel" onclick="closeModal('sessionModal')">Cancel</button>
+      <button class="btn-save" onclick="saveSession()">Save Set</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD / EDIT FULL-LENGTH MODAL -->
+<div class="modal-overlay" id="flModal">
+  <div class="modal" style="max-width:520px;">
+    <h3 id="flModalTitle">Add Full-Length</h3>
+    <div class="modal-sub">Scaled section scores range from 118 to 132</div>
+    <div class="form-row-pair">
+      <div class="form-row"><label>Date</label><input type="date" id="fl-date" /></div>
+      <div class="form-row">
+        <label>Provider</label>
+        <input type="text" id="fl-provider" placeholder="e.g. AAMC" list="flProviderOptions" />
+        <datalist id="flProviderOptions"></datalist>
+      </div>
+    </div>
+    <div class="form-row"><label>Exam Name</label><input type="text" id="fl-name" placeholder="e.g. AAMC FL 1, Blueprint FL 3" /></div>
+    <div class="form-row-pair">
+      <div class="form-row"><label>Chem/Phys</label><input type="number" min="118" max="132" id="fl-cp" placeholder="118–132" oninput="updateFLPreview()" /></div>
+      <div class="form-row"><label>CARS</label><input type="number" min="118" max="132" id="fl-cars" placeholder="118–132" oninput="updateFLPreview()" /></div>
+    </div>
+    <div class="form-row-pair">
+      <div class="form-row"><label>Bio/Biochem</label><input type="number" min="118" max="132" id="fl-bb" placeholder="118–132" oninput="updateFLPreview()" /></div>
+      <div class="form-row"><label>Psych/Soc</label><input type="number" min="118" max="132" id="fl-ps" placeholder="118–132" oninput="updateFLPreview()" /></div>
+    </div>
+    <div class="live-preview" id="flLivePreview"></div>
+    <div class="form-row" style="margin-top:12px;"><label>Notes (optional)</label><textarea id="fl-notes" placeholder="Timing, energy, sections that felt off…"></textarea></div>
+    <div class="confirm-delete-bar" id="flDeleteBar">
+      <p>Are you sure you want to delete this exam? This cannot be undone.</p>
+      <button class="btn-del-confirm" onclick="confirmDeleteFL()">Delete Exam</button>
+      <button class="btn-cancel" onclick="document.getElementById('flDeleteBar').classList.remove('show')" style="padding:7px 14px">Cancel</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="flDeleteTrigger" onclick="document.getElementById('flDeleteBar').classList.add('show')" style="display:none;color:var(--alert-red);border-color:#f3b0aa;">Delete</button>
+      <button class="btn-cancel" onclick="closeModal('flModal')">Cancel</button>
+      <button class="btn-save" onclick="saveFL()">Save Exam</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS / BACKUP MODAL -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal" style="max-width:520px;">
+    <h3>Settings</h3>
+    <div class="modal-sub">Your test date, goal, and data backups</div>
+    <div class="form-row-pair">
+      <div class="form-row"><label>Test Date</label><input type="date" id="set-test-date" /></div>
+      <div class="form-row"><label>Target Score</label><input type="number" min="472" max="528" id="set-target" placeholder="e.g. 515" /></div>
+    </div>
+    <div class="form-row"><label>Target Accuracy (%)</label><input type="number" min="1" max="100" id="set-target-acc" placeholder="e.g. 75" /></div>
+    <div class="gold-line" style="margin:22px 0;"></div>
+    <div class="settings-data-label">Your data lives in this browser. Back it up regularly.</div>
+    <div class="settings-data-row">
+      <button class="analytics-export-btn" onclick="exportBackupJSON()">⬇ Download Backup</button>
+      <button class="analytics-export-btn" onclick="document.getElementById('restoreFileInput').click()">⬆ Restore Backup</button>
+      <input type="file" id="restoreFileInput" accept="application/json,.json" style="display:none" onchange="importBackupJSON(this)" />
+    </div>
+    <div class="settings-data-row">
+      <button class="confetti-btn" onclick="loadSampleData()">✨ Load Sample Data</button>
+      <button class="confetti-btn" style="color:var(--alert-red);" onclick="document.getElementById('clearDataBar').classList.add('show')">Clear All Data</button>
+    </div>
+    <div class="confirm-delete-bar" id="clearDataBar">
+      <p>This permanently erases every practice set and exam stored in this browser. Download a backup first if you want to keep anything.</p>
+      <button class="btn-del-confirm" onclick="clearAllData()">Erase Everything</button>
+      <button class="btn-cancel" onclick="document.getElementById('clearDataBar').classList.remove('show')" style="padding:7px 14px">Cancel</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('settingsModal')">Cancel</button>
+      <button class="btn-save" onclick="saveSettings()">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<div class="kbd-hint" id="kbdHint"></div>
+<div class="toast" id="toast"></div>
+
+<script src="core.js"></script>
+<script src="charts.js"></script>
+<script src="practice.js"></script>
+<script src="fullLengths.js"></script>
+<script src="analytics.js"></script>
+<script src="navigation.js"></script>
+</body>
+</html>
