@@ -4,50 +4,13 @@ Track MCAT practice across all four sections. Log **what went wrong** on every m
 
 ## Getting around
 
-Everything is grouped behind four buttons at the top:
+One top bar: **Home · Log · History · Exams · Stats**, plus ⚙️ Settings for test date, target score, theme, and backups.
 
-| Button | What's inside |
-| --- | --- |
-| 🏠 **Home** | Big buttons for your daily actions, today's progress, and top priorities |
-| 📝 **Daily Log** | ✏️ New Entry · 📅 Log History · 🧪 Full-Lengths |
-| 🔁 **Review** | Review Queue · All Mistakes · Patterns |
-| 📈 **Progress** | Analytics · Content Checklist |
-
-## Log a Passage: one button for everything
-
-Every "log" button opens the same screen. At the top, choose:
-- **📝 Log a passage / set**: score, time, link, plus every question you missed (below)
-- **❌ Just log a mistake**: one question, no score needed (e.g. from a full-length review)
-
-For a passage or set:
-
-1. **What did you do?** Fill in the date, section, subject, and provider, the passage or set name, and **links to the passage** (add as many as you like). Then enter the number of questions, how many you got right, and the minutes it took.
-2. **Questions you missed.** A card appears for every miss. On each card, record:
-   - the question
-   - **the answer you picked**
-   - **the correct answer**
-   - **what went wrong** (15 error types, each with a fix-it tip)
-   - the concept
-   - an optional link to that exact question
-   - what happened
-   - your takeaway
-   - an Anki flag
-
-   You can also add lucky guesses.
-3. **Reflection.** Optional notes on how it went.
-
-A live sidebar shows your accuracy, pace vs. test pace, how many misses you've explained, and anything still missing. Drafts save automatically, so closing the tab won't lose your work. **Log History** shows every entry grouped by day, with links you can click and each miss listed inline. Click an entry to edit it; review history is kept.
-
-## 🔬 Deep Dive analytics (Progress → Deep Dive)
-- **What the Numbers Say**: findings written for you. Examples: best and worst weekday, whether rushing or going slow costs points, fatigue in long sets, whether you lean toward one answer letter, and week-over-week momentum.
-- **Momentum**: rolling 7-day accuracy plus daily volume over the last 60 days.
-- **Pace vs. Accuracy** scatter (every timed set, compared with real test pace).
-- **Fatigue**: accuracy by set length.
-- **Weekday Rhythm**: accuracy by day of the week.
-- **Answer-Choice Habits**: the letters you pick wrong vs. the letters that were correct.
-- **Score Spread**: how your sets are distributed by accuracy.
-- **Provider × Section**: an accuracy grid; click a cell to see those passages.
-- Filter by period and section; the KPIs show 7-day accuracy, questions per study day, consistency, and your best day.
+- **Home**: a big **Log a passage** button, three numbers (questions, accuracy, predicted score), your recent passages, and three tips.
+- **Log**: super-quick logging. Paste the link, tap the section and provider, then enter your score. A card appears for each miss; tap your answer, the correct answer, and what went wrong. Subject, time, date, the question, the concept, and your takeaway are optional, behind **+ More** and **+ details**. Drafts autosave.
+- **History**: **Passages** grouped by day, with links and misses inline, plus a **Mistakes** list you can search. Click anything to edit it.
+- **Exams**: full-length scores, predicted score, percentile, and test-day projection.
+- **Stats**: **Overview** (by section, subject, and provider), **What went wrong** (your error patterns), and **Deep dive** (pace, fatigue, weekday, answer habits, momentum).
 
 ## Pages
 

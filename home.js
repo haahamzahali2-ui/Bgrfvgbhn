@@ -56,16 +56,18 @@ function getWeekProgress() {
 function renderHome() {
   renderTopbarStats();
   renderCountdown();
-  document.getElementById('homeTodayPrompt').innerHTML = todayPromptHtml();
-  renderTodayStrip();
+  const sum = summarizeSessions(db.sessions);
+  const outlook = computeScoreOutlook();
+  const week = summarizeSessions(db.sessions.filter(s => s.date >= addDaysISO(todayISO(), -6)));
+  document.getElementById('homeStats').innerHTML = `
+    <div class="home-stat"><b>${sum.questions.toLocaleString()}</b><span>questions done</span></div>
+    <div class="home-stat"><b class="${sum.questions ? getAccuracyClass(sum.accuracy) : ''}">${sum.questions ? sum.accuracy + '%' : '—'}</b><span>accuracy${week.questions ? ` · ${week.accuracy}% this week` : ''}</span></div>
+    <div class="home-stat" onclick="showGroup('exams')"><b>${outlook ? outlook.predicted : '—'}</b><span>${outlook ? `predicted score · ~${ordinal(outlook.percentile)} pct` : 'add an exam to predict'}</span></div>`;
+  const recent = [...db.sessions].sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 4);
+  document.getElementById('homeRecent').innerHTML = recent.length
+    ? recent.map(entryCardHtml).join('')
+    : `<div class="home-empty">No passages yet. Hit <b>Log a passage</b> after your next one — or <a href="#" onclick="loadSampleData();return false;">try sample data</a>.</div>`;
   document.getElementById('homeInsights').innerHTML = insightsHtml(generateInsights().slice(0, 3));
-  renderSectionSnapshot();
-  if (document.getElementById('homeMore').style.display !== 'none') { renderHeatmap(); renderMilestones(); }
-}
-
-function toggleHomeMore() {
-  toggleBlock('homeMore', document.getElementById('homeMoreBtn'), 'Study calendar & milestones');
-  if (document.getElementById('homeMore').style.display !== 'none') { renderHeatmap(); renderMilestones(); }
 }
 
 function renderCountdown() {
@@ -73,7 +75,7 @@ function renderCountdown() {
   const el = document.getElementById('homeCountdown');
   if (!el) return;
   if (days === null) el.innerHTML = `<a href="#" onclick="openSettingsModal();return false;">Set your test date</a> to start the countdown`;
-  else if (days > 0) el.innerHTML = `<strong>${days}</strong> day${days !== 1 ? 's' : ''} until test day — ${formatDateShort(db.settings.testDate)} · about <strong>${Math.ceil(days / 7)}</strong> week${Math.ceil(days / 7) !== 1 ? 's' : ''} of prep left`;
+  else if (days > 0) el.innerHTML = `<strong>${days}</strong> day${days !== 1 ? 's' : ''} until test day`;
   else if (days === 0) el.textContent = 'Test day is today. You\'ve got this. 🩺';
   else el.textContent = `Test taken ${formatDateShort(db.settings.testDate)} — update your date in settings`;
 }

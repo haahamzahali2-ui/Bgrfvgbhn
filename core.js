@@ -286,9 +286,6 @@ function openSettingsModal() {
   document.getElementById('set-test-date').value = db.settings.testDate || '';
   document.getElementById('set-target').value = db.settings.targetScore || '';
   document.getElementById('set-target-acc').value = db.settings.targetAccuracy || 75;
-  document.getElementById('set-weekly-goal').value = db.settings.weeklyGoal || 300;
-  document.getElementById('set-review-goal').value = db.settings.dailyReviewGoal || 20;
-  document.getElementById('set-prompt-mistakes').checked = !!db.settings.promptMistakes;
   document.getElementById('clearDataBar').classList.remove('show');
   openModal('settingsModal');
 }
@@ -296,16 +293,11 @@ function openSettingsModal() {
 function saveSettings() {
   const target = document.getElementById('set-target').value;
   const targetAcc = Number(document.getElementById('set-target-acc').value);
-  const weekly = Number(document.getElementById('set-weekly-goal').value);
-  const reviewGoal = Number(document.getElementById('set-review-goal').value);
   if (target && (Number(target) < 472 || Number(target) > 528)) { showToast('Target score must be between 472 and 528'); return; }
   if (targetAcc && (targetAcc < 1 || targetAcc > 100)) { showToast('Target accuracy must be between 1 and 100'); return; }
   db.settings.testDate = document.getElementById('set-test-date').value;
   db.settings.targetScore = target;
   db.settings.targetAccuracy = targetAcc || 75;
-  db.settings.weeklyGoal = weekly > 0 ? weekly : 300;
-  db.settings.dailyReviewGoal = reviewGoal > 0 ? reviewGoal : 20;
-  db.settings.promptMistakes = document.getElementById('set-prompt-mistakes').checked;
   saveDB();
   closeModal('settingsModal');
   refreshAll();
@@ -362,12 +354,14 @@ function clearAllData() {
 function toggleDarkMode() {
   const isDark = document.body.classList.toggle('dark-mode');
   localStorage.setItem('mcat_dark_mode', isDark ? '1' : '0');
-  document.getElementById('darkToggleBtn').textContent = isDark ? '☀️' : '🌙';
+  document.getElementById('darkToggleBtn').textContent = isDark ? '☀️ Light' : '🌙 Dark';
   refreshAll();
 }
 if (localStorage.getItem('mcat_dark_mode') === '1') {
   document.body.classList.add('dark-mode');
-  document.getElementById('darkToggleBtn').textContent = '☀️';
+  document.getElementById('darkToggleBtn').textContent = '☀️ Light';
+} else {
+  document.getElementById('darkToggleBtn').textContent = '🌙 Dark';
 }
 
 // ═══════════════════════════════════
@@ -435,23 +429,6 @@ function animateCount(el, target, duration = 1200, suffix = '') {
 // TOPBAR
 // ═══════════════════════════════════
 function renderTopbarStats() {
-  const sum = summarizeSessions(db.sessions);
-  const latest = getSortedFLs().slice(-1)[0];
-  const days = getDaysUntilTest();
-  const due = typeof getDueMistakes === 'function' ? getDueMistakes().length : 0;
-
-  document.getElementById('stat-questions').textContent = sum.questions.toLocaleString();
-  document.getElementById('stat-accuracy').textContent = sum.questions ? `${sum.accuracy}%` : '—';
-  const flEl = document.getElementById('stat-latest-fl');
-  if (flEl) flEl.textContent = latest ? getFLTotal(latest) : '—';
-  document.getElementById('stat-days-left').textContent = days === null ? '—' : Math.max(days, 0);
-  const dueEl = document.getElementById('stat-due');
-  dueEl.textContent = due;
-  dueEl.classList.toggle('has-due', due > 0);
-  const navDue = document.getElementById('navDueCount');
-  if (navDue) { navDue.textContent = due || ''; navDue.style.display = due ? 'inline-flex' : 'none'; }
-  const qa = document.getElementById('qaReviewSub');
-  if (qa) qa.textContent = due ? `${due} due now` : 'Nothing due';
   if (typeof renderGroupTabs === 'function') renderGroupTabs();
 }
 
@@ -477,7 +454,6 @@ document.addEventListener('click', e => {
 // Re-render whatever page is visible after data changes
 function refreshAll() {
   renderTopbarStats();
-  if (typeof checkAchievements === 'function') checkAchievements();
   const active = document.querySelector('.page.active')?.id?.replace('page-', '');
   const renderers = {
     'home': () => renderHome(),

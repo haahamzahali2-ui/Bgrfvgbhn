@@ -77,7 +77,7 @@ function setLogMode(mode, fromFill) {
   page.classList.toggle('mode-mistake', mode === 'mistake');
   document.querySelectorAll('#logModeToggle button').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
   document.getElementById('logStep2Title').textContent = mode === 'mistake' ? 'The question you missed' : 'Questions you missed';
-  if (!logState.sessionId) document.getElementById('logSaveBtn').textContent = mode === 'mistake' ? 'Save Mistake' : 'Save Entry';
+
   if (mode === 'mistake' && !document.querySelector('#logItems .qcard')) addQcard();
   updateLogSummary();
   if (!fromFill) scheduleDraftSave();
@@ -111,21 +111,20 @@ function entryFromSession(s) {
 // Header, draft banner, delete button — depends on new vs. edit
 function renderLogChrome() {
   const editing = !!logState.sessionId;
-  document.getElementById('logTitle').textContent = editing ? 'Edit Passage' : 'Log a Passage';
+  document.getElementById('logTitle').textContent = editing ? 'Edit passage' : 'Log a passage';
   document.getElementById('logSubtitle').textContent = editing
-    ? 'Update the passage or any of its questions — review history is kept'
-    : 'Pick what you want to log below — everything lives in one place';
+    ? 'Change anything, then save.'
+    : 'Takes about 30 seconds — only the basics are required.';
   document.getElementById('logDeleteTrigger').style.display = editing ? 'block' : 'none';
-  document.getElementById('logModeToggle').style.display = editing ? 'none' : 'grid';
   document.getElementById('logDeleteBar').classList.remove('show');
-  document.getElementById('logSaveBtn').textContent = editing ? 'Save Changes' : logState.mode === 'mistake' ? 'Save Mistake' : 'Save Entry';
+  document.getElementById('logSaveBtn').textContent = editing ? 'Save changes' : 'Save';
 
   const banner = document.getElementById('logDraftBanner');
   const draft = editing ? null : loadLogDraft();
   if (draft) {
     const when = new Date(draft.savedAt).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' });
     banner.style.display = 'flex';
-    banner.innerHTML = `<span>📝 You have an unsaved entry from <strong>${escapeHtml(when)}</strong>${draft.data.subject ? ` (${escapeHtml(draft.data.provider)} · ${escapeHtml(draft.data.subject)})` : ''}.</span>
+    banner.innerHTML = `<span>📝 Unsaved passage from <strong>${escapeHtml(when)}</strong>${draft.data.subject ? ` (${escapeHtml(draft.data.provider)} · ${escapeHtml(draft.data.subject)})` : ''}.</span>
       <span class="smi-actions"><button class="btn-save" onclick="restoreLogDraft()">Restore it</button><button class="btn-cancel" onclick="discardLogDraft()">Discard</button></span>`;
   } else {
     banner.style.display = 'none';
@@ -152,6 +151,7 @@ function fillLogForm(e) {
   items.innerHTML = '';
   (e.items || []).forEach(it => addQcard(it));
   updateLogOptions();
+  renderLogChips();
   setLogMode(logState.sessionId ? 'passage' : (e.mode || 'passage'), true);
 }
 
@@ -234,40 +234,47 @@ function removeLogLink(btn) {
 // ═══════════════════════════════════
 // QUESTION CARDS
 // ═══════════════════════════════════
+// The error types shown up front; the rest sit behind "More…"
+const QUICK_ERRORS = ['content', 'recall', 'misread_q', 'careless', 'data', 'distractor', 'narrowed', 'timing'];
+
 function addQcard(it = {}, guess = false) {
   const wrap = document.getElementById('logItems');
   const card = document.createElement('div');
-  card.className = 'qcard open';
+  card.className = 'qcard';
   if (it.id) card.dataset.mid = it.id;
   const type = it.errorType || (guess ? 'guess' : '');
   const chips = (kind, sel) => ['A', 'B', 'C', 'D'].map(l => `<button type="button" class="answer-chip ${kind} ${sel === l ? 'active' : ''}" data-letter="${l}">${l}</button>`).join('');
+  const hasDetails = it.qref || it.question || it.concept || it.what || it.takeaway || it.link || it.anki;
   card.innerHTML = `
     <div class="qcard-head">
       <span class="qcard-num"></span>
-      <input class="qc-qref" placeholder="Q#" value="${escapeHtml(it.qref || '')}" />
-      <span class="qcard-summary"></span>
-      <button type="button" class="qcard-toggle" title="Collapse / expand">⌄</button>
-      <button type="button" class="ql-remove" title="Remove this question">✕</button>
+      <div class="qq-answers">
+        <div><label>You picked</label><div class="answer-chips" data-kind="mine">${chips('mine', it.myAnswer)}</div></div>
+        <span class="qq-arrow">→</span>
+        <div><label>Correct</label><div class="answer-chips" data-kind="correct">${chips('correct', it.correctAnswer)}</div></div>
+      </div>
+      <button type="button" class="ql-remove" title="Remove">✕</button>
     </div>
-    <div class="qcard-body">
-      <div class="form-row"><label>The question <span class="label-opt">(paste or paraphrase — becomes your review flashcard)</span></label>
-        <textarea class="qc-question" placeholder="e.g. Which change would increase Km without changing Vmax?">${escapeHtml(it.question || '')}</textarea></div>
-      <div class="qcard-answers">
-        <div class="form-row"><label>Answer you picked</label><div class="answer-chips" data-kind="mine">${chips('mine', it.myAnswer)}</div></div>
-        <div class="form-row"><label>Correct answer</label><div class="answer-chips" data-kind="correct">${chips('correct', it.correctAnswer)}</div></div>
-      </div>
-      <div class="form-row"><label>What went wrong?</label>
-        <select class="qc-type">${errorTypeOptionsHtml(type)}</select>
-        <div class="qc-tip"></div></div>
+    <div class="qq-label">What went wrong?</div>
+    <div class="err-chips">
+      ${ERROR_TYPES.map(e => `<button type="button" class="err-chip ${QUICK_ERRORS.includes(e.key) ? '' : 'extra'} ${e.key === type ? 'active' : ''}" data-type="${e.key}" style="--bucket-color:${getBucket(e.bucket).color}">${e.icon} ${escapeHtml(e.label)}</button>`).join('')}
+      <button type="button" class="err-more">More…</button>
+    </div>
+    <input type="hidden" class="qc-type" value="${type}" />
+    <div class="qc-tip"></div>
+    <button type="button" class="link-btn qc-details-btn">${hasDetails ? '− details' : '+ details'} <small>question, concept, takeaway, link</small></button>
+    <div class="qcard-details" style="${hasDetails ? '' : 'display:none'}">
       <div class="form-row-pair">
-        <div class="form-row"><label>Concept / topic</label><input class="qc-concept" list="logConceptOptions" placeholder="e.g. Enzyme inhibition & regulation" value="${escapeHtml(it.concept || '')}" /></div>
-        <div class="form-row"><label>Question link <span class="label-opt">(optional)</span></label><input type="url" class="qc-link" placeholder="Link to this exact question" value="${escapeHtml(it.link || '')}" /></div>
+        <div class="form-row"><label>Concept</label><input class="qc-concept" list="logConceptOptions" placeholder="e.g. Enzyme kinetics" value="${escapeHtml(it.concept || '')}" /></div>
+        <div class="form-row"><label>Question #</label><input class="qc-qref" placeholder="e.g. Q3" value="${escapeHtml(it.qref || '')}" /></div>
       </div>
+      <div class="form-row"><label>The question</label><textarea class="qc-question" placeholder="Paste or paraphrase it">${escapeHtml(it.question || '')}</textarea></div>
       <div class="form-row-pair">
-        <div class="form-row"><label>What happened <span class="label-opt">(your reasoning)</span></label><textarea class="qc-what" placeholder="e.g. Thought Vmax dropped — mixed up competitive vs noncompetitive">${escapeHtml(it.what || '')}</textarea></div>
-        <div class="form-row"><label>Takeaway <span class="label-opt">(the rule for next time)</span></label><textarea class="qc-takeaway" placeholder="e.g. Competitive: Km ↑, Vmax same">${escapeHtml(it.takeaway || '')}</textarea></div>
+        <div class="form-row"><label>What happened</label><textarea class="qc-what" placeholder="Your reasoning">${escapeHtml(it.what || '')}</textarea></div>
+        <div class="form-row"><label>Takeaway</label><textarea class="qc-takeaway" placeholder="The rule for next time">${escapeHtml(it.takeaway || '')}</textarea></div>
       </div>
-      <label class="toggle-row"><input type="checkbox" class="qc-anki" ${it.anki ? 'checked' : ''} /> <span>🃏 Flag for Anki export</span></label>
+      <div class="form-row"><label>Question link</label><input type="url" class="qc-link" placeholder="Link to this exact question" value="${escapeHtml(it.link || '')}" /></div>
+      <label class="toggle-row"><input type="checkbox" class="qc-anki" ${it.anki ? 'checked' : ''} /> <span>🃏 Flag for Anki</span></label>
     </div>`;
   wrap.appendChild(card);
   refreshQcard(card);
@@ -276,18 +283,15 @@ function addQcard(it = {}, guess = false) {
 }
 
 function refreshQcard(card) {
-  const it = readQcard(card);
-  const et = it.errorType ? getErrorType(it.errorType) : null;
+  const type = card.querySelector('.qc-type').value;
+  const et = type ? getErrorType(type) : null;
   card.style.setProperty('--bucket-color', et ? getBucket(et.bucket).color : 'var(--border)');
   card.classList.toggle('has-type', !!et);
-  card.classList.toggle('guess', it.errorType === 'guess');
-  card.querySelector('.qc-tip').innerHTML = et ? `<strong>Fix it:</strong> ${escapeHtml(et.tip)}` : '';
-  card.querySelector('.qc-tip').style.display = et ? 'block' : 'none';
-  const parts = [];
-  if (it.myAnswer || it.correctAnswer) parts.push(`<span class="answer-flip">${it.myAnswer || '?'} → ${it.correctAnswer || '?'}</span>`);
-  if (et) parts.push(`<span class="error-chip" style="--bucket-color:${getBucket(et.bucket).color}">${et.icon} ${escapeHtml(et.label)}</span>`);
-  if (it.concept) parts.push(`<span class="qcard-concept">${escapeHtml(it.concept)}</span>`);
-  card.querySelector('.qcard-summary').innerHTML = parts.join('') || '<span class="muted">New question — fill in what went wrong</span>';
+  card.classList.toggle('guess', type === 'guess');
+  card.querySelectorAll('.err-chip').forEach(c => c.classList.toggle('active', c.dataset.type === type));
+  const tip = card.querySelector('.qc-tip');
+  tip.innerHTML = et ? `💡 ${escapeHtml(et.tip)}` : '';
+  tip.style.display = et ? 'block' : 'none';
   card.classList.remove('invalid');
 }
 
@@ -324,18 +328,56 @@ function setAllQcards(open) {
 document.addEventListener('click', e => {
   const card = e.target.closest('#logItems .qcard');
   if (!card) return;
-  if (e.target.classList.contains('answer-chip')) {
-    const was = e.target.classList.contains('active');
-    e.target.parentElement.querySelectorAll('.answer-chip').forEach(b => b.classList.remove('active'));
-    if (!was) e.target.classList.add('active');
-    refreshQcard(card); onLogInput();
-  } else if (e.target.classList.contains('ql-remove')) {
+  const t = e.target.closest('button');
+  if (!t) return;
+  if (t.classList.contains('answer-chip')) {
+    const was = t.classList.contains('active');
+    t.parentElement.querySelectorAll('.answer-chip').forEach(b => b.classList.remove('active'));
+    if (!was) t.classList.add('active');
+    onLogInput({ target: card });
+  } else if (t.classList.contains('err-chip')) {
+    const input = card.querySelector('.qc-type');
+    input.value = input.value === t.dataset.type ? '' : t.dataset.type;
+    refreshQcard(card); renumberQcards(); onLogInput({ target: card });
+  } else if (t.classList.contains('err-more')) {
+    card.classList.toggle('show-all');
+    t.textContent = card.classList.contains('show-all') ? 'Less' : 'More…';
+  } else if (t.classList.contains('qc-details-btn')) {
+    const d = card.querySelector('.qcard-details');
+    const open = d.style.display === 'none';
+    d.style.display = open ? '' : 'none';
+    t.firstChild.textContent = open ? '− details ' : '+ details ';
+    if (open) d.querySelector('input, textarea').focus();
+  } else if (t.classList.contains('ql-remove')) {
     if (card.dataset.mid) logState.removed.push(card.dataset.mid);
     card.remove(); renumberQcards(); onLogInput();
-  } else if (e.target.classList.contains('qcard-toggle') || (e.target.closest('.qcard-head') && !e.target.closest('input, button'))) {
-    card.classList.toggle('open');
   }
 });
+
+// Section and provider pickers
+function renderLogChips() {
+  const sec = document.getElementById('log-section').value;
+  document.getElementById('logSectionChips').innerHTML = SECTIONS.map(x =>
+    `<button type="button" class="pick-chip ${x.key === sec ? 'active' : ''}" style="--sec-color:${x.color}" onclick="pickLogSection('${x.key}')">${x.short}</button>`).join('');
+  const prov = document.getElementById('log-provider').value.trim();
+  const counts = countBy(db.sessions.filter(s => s.provider), s => s.provider);
+  const top = [...new Set([...Object.keys(counts).sort((a, b) => counts[b] - counts[a]), 'AAMC', 'UWorld', 'Jack Westin', 'Khan Academy', 'Blueprint', 'Kaplan'])].slice(0, 6);
+  if (prov && !top.includes(prov)) top.push(prov);
+  document.getElementById('logProviderChips').innerHTML = top.map(p =>
+    `<button type="button" class="pick-chip ${p === prov ? 'active' : ''}" onclick="pickLogProvider(${jsArg(p)})">${escapeHtml(p)}</button>`).join('');
+}
+
+function pickLogSection(key) {
+  const sel = document.getElementById('log-section');
+  sel.value = key;
+  onLogInput({ target: sel });
+}
+
+function pickLogProvider(p) {
+  const input = document.getElementById('log-provider');
+  input.value = p;
+  onLogInput({ target: input });
+}
 
 document.addEventListener('input', e => { if (e.target.closest('#page-log')) onLogInput(e); });
 document.addEventListener('change', e => { if (e.target.closest('#page-log')) onLogInput(e); });
@@ -344,7 +386,8 @@ function onLogInput(e) {
   const t = e?.target;
   if (t) {
     const card = t.closest('.qcard');
-    if (card) { refreshQcard(card); renumberQcards(); }
+    if (card && t !== card) { refreshQcard(card); renumberQcards(); }
+    if (t.id === 'log-section' || t.id === 'log-provider') renderLogChips();
     if (t.id === 'log-total' || t.id === 'log-correct') syncMissCards();
     if (t.id === 'log-section' || t.id === 'log-subject') updateLogOptions();
     if (t.id === 'log-section' && t.value === 'cars' && !document.getElementById('log-subject').value) {
@@ -383,46 +426,27 @@ function updateLogSummary() {
     if (cnt) cnt.textContent = 'add more with the button below';
     return;
   }
-  const total = parseInt(f.total, 10), correct = parseInt(f.correct, 10), minutes = parseFloat(f.minutes);
+  const total = parseInt(f.total, 10), correct = parseInt(f.correct, 10);
   const valid = total > 0 && !isNaN(correct) && correct <= total && correct >= 0;
   const acc = valid ? pct(correct, total) : null;
   const missed = valid ? total - correct : 0;
   const items = f.items.filter(it => !isQcardEmpty(it));
-  const logged = items.filter(it => it.errorType && it.errorType !== 'guess').length;
-  const guesses = items.filter(it => it.errorType === 'guess').length;
-  const pace = valid && minutes > 0 ? Math.round(minutes * 60 / total) : null;
-  const target = getTargetPace(f.section);
-  const byType = countBy(items.filter(it => it.errorType), it => it.errorType);
-  const cls = acc === null ? '' : getAccuracyClass(acc);
+  const explained = items.filter(it => it.errorType && it.errorType !== 'guess').length;
 
-  const issues = [];
-  if (!f.subject) issues.push('Add a subject');
-  if (!f.provider) issues.push('Add a provider');
-  if (!(total > 0)) issues.push('Enter how many questions');
-  else if (isNaN(correct)) issues.push('Enter how many you got right');
-  else if (correct > total) issues.push('Correct can\'t exceed total');
-  const untyped = items.filter(it => !it.errorType).length;
-  if (untyped) issues.push(`${plural(untyped, 'question')} still need${untyped === 1 ? 's' : ''} "what went wrong"`);
-  const badLinks = f.links.filter(u => u && !safeUrl(u)).length;
-  if (badLinks) issues.push('A link doesn\'t look like a web address');
+  const pill = document.getElementById('logScorePill');
+  if (pill) { pill.textContent = acc === null ? '' : acc + '%'; pill.className = 'score-pill ' + (acc === null ? '' : getAccuracyClass(acc)); }
 
-  el.innerHTML = `
-    <div class="ls-score ${cls}">${acc === null ? '—' : acc + '%'}</div>
-    <div class="ls-sub">${valid ? `${correct} of ${total} correct` : 'Score appears here'}</div>
-    <div class="ls-rows">
-      <div class="ls-row"><span>Misses logged</span><b class="${valid && logged >= missed ? 'ok' : missed ? 'warn' : ''}">${logged}${valid ? ` / ${missed}` : ''}</b></div>
-      ${guesses ? `<div class="ls-row"><span>Lucky guesses</span><b>${guesses}</b></div>` : ''}
-      <div class="ls-row"><span>Pace</span><b class="${pace && pace > target * 1.1 ? 'warn' : pace ? 'ok' : ''}">${pace ? formatPace(pace) + '/Q' : '—'}</b></div>
-      <div class="ls-row"><span>Test pace</span><b>${formatPace(target)}/Q</b></div>
-      <div class="ls-row"><span>Links</span><b>${f.links.filter(u => safeUrl(u)).length}</b></div>
-    </div>
-    ${Object.keys(byType).length ? `<div class="ls-types">${Object.keys(byType).sort((a, b) => byType[b] - byType[a]).map(k => {
-      const et = getErrorType(k);
-      return `<span class="error-chip" style="--bucket-color:${getBucket(et.bucket).color}">${et.icon} ${escapeHtml(et.label)} × ${byType[k]}</span>`;
-    }).join('')}</div>` : ''}
-    ${issues.length ? `<ul class="ls-issues">${issues.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul>` : `<div class="ls-ready">✓ Ready to save</div>`}`;
+  let issue = '';
+  if (!f.provider) issue = 'Pick a provider';
+  else if (!(total > 0) || isNaN(correct)) issue = 'Enter your score';
+  else if (correct > total) issue = 'Right can\'t be more than total';
+  else if (items.some(it => !it.errorType)) issue = 'Tap "what went wrong" on each question';
+  else if (f.links.some(u => u && !safeUrl(u))) issue = 'That link doesn\'t look right';
+  el.innerHTML = issue
+    ? `<span class="qs-issue">${escapeHtml(issue)}</span>`
+    : `<span class="qs-ready">✓ ${acc}% · ${missed ? `${explained}/${missed} misses explained` : 'perfect! 💯'}</span>`;
   const cnt = document.getElementById('logMissCount');
-  if (cnt) cnt.textContent = valid ? (missed ? `${plural(missed, 'miss', 'misses')} — one card each` : 'perfect set! 💯') : 'enter your score above to get a card per miss';
+  if (cnt) cnt.textContent = valid ? (missed ? `${plural(missed, 'card')} — tap your answer, the right one, and what went wrong` : 'none — perfect! 💯') : 'cards appear once you enter your score';
 }
 
 // ═══════════════════════════════════
@@ -472,8 +496,10 @@ function saveLogEntry() {
   const f = readLogForm();
   const total = parseInt(f.total, 10), correct = parseInt(f.correct, 10);
   const minutes = f.minutes ? Math.max(0, parseFloat(f.minutes)) : 0;
-  if (!f.date || !f.subject || !f.provider) { showToast('Please fill in Date, Subject, and Provider'); document.getElementById(f.subject ? 'log-provider' : 'log-subject').focus(); return; }
-  if (!total || total < 1 || isNaN(correct) || correct < 0) { showToast('Please enter questions and number correct'); document.getElementById('log-total').focus(); return; }
+  if (!f.subject) f.subject = f.section === 'cars' ? 'CARS — Mixed' : `${getSection(f.section).name} — Mixed`;
+  if (!f.date) f.date = todayISO();
+  if (!f.provider) { showToast('Pick a provider'); document.getElementById('log-provider').focus(); return; }
+  if (!total || total < 1 || isNaN(correct) || correct < 0) { showToast('Enter your score'); document.getElementById('log-correct').focus(); return; }
   if (correct > total) { showToast('Correct can\'t be more than total questions'); return; }
 
   // Question cards: skip blank ones, require an error type on the rest
@@ -524,10 +550,10 @@ function saveLogEntry() {
   logState.ready = false;
   const missed = total - correct;
   const loggedMiss = items.filter(it => it.errorType !== 'guess').length;
-  showPage('practice-list');
+  showPage(wasEdit ? 'practice-list' : 'home');
   highlightEntry(sid);
   showToast(wasEdit ? 'Entry updated ✓'
-    : `Logged ${correct}/${total} — ${pct(correct, total)}%${missed ? ` · ${loggedMiss}/${missed} misses explained` : ' · perfect! 💯'} ✓`);
+    : `Saved ✓ ${correct}/${total} (${pct(correct, total)}%)`);
 }
 
 // Single-mistake mode: save the question cards as standalone mistakes (no score)

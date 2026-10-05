@@ -52,7 +52,7 @@ function renderMistakeInsights() {
   const byBucket = countBy(list, m => getErrorType(m.errorType).bucket);
   const topType = Object.keys(byType).sort((a, b) => byType[b] - byType[a])[0];
   const avoidable = list.filter(m => AVOIDABLE_BUCKETS.includes(getErrorType(m.errorType).bucket)).length;
-  const mastered = list.filter(m => getMistakeStatus(m) === 'mastered').length;
+  const withTake = list.filter(m => m.takeaway).length;
 
   document.getElementById('insightKPIs').innerHTML = `
     <div class="analytics-kpi gold">
@@ -71,9 +71,9 @@ function renderMistakeInsights() {
       <div class="kpi-sub">execution + strategy + timing</div>
     </div>
     <div class="analytics-kpi green">
-      <div class="kpi-val green">${pct(mastered, list.length)}%</div>
-      <div class="kpi-label">Mastered</div>
-      <div class="kpi-sub">${mastered} of ${list.length} reviewed to mastery</div>
+      <div class="kpi-val green">${pct(withTake, list.length)}%</div>
+      <div class="kpi-label">Have a Takeaway</div>
+      <div class="kpi-sub">${withTake} of ${list.length} misses explained</div>
     </div>`;
 
   renderPlaybook(list, byType);
@@ -239,7 +239,7 @@ function renderRepeatOffenders(list) {
   const rows = getRepeatOffenders(list).filter(r => r.count >= 2).slice(0, 12);
   const tbody = document.querySelector('#repeatTable tbody');
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="6" class="table-empty">No concept missed twice yet — add a concept to each mistake to spot patterns.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="table-empty">No concept missed twice yet — add a concept to each mistake to spot patterns.</td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map(r => {
@@ -251,7 +251,6 @@ function renderRepeatOffenders(list) {
       <td><span class="repeat-count ${r.count >= 4 ? 'hot' : ''}">× ${r.count}</span></td>
       <td><span class="error-chip" style="--bucket-color:${getBucket(et.bucket).color}">${et.icon} ${escapeHtml(et.label)}</span></td>
       <td>${relativeDay(r.last)}</td>
-      <td>${r.mastered}/${r.count}</td>
     </tr>`;
   }).join('');
 }
@@ -275,20 +274,9 @@ function generateInsights() {
   const add = (pri, tone, icon, text, action) => out.push({ pri, tone, icon, text, action });
   const target = Number(db.settings.targetAccuracy) || 75;
 
-  // Reviews due
-  const due = getDueMistakes().length;
-  if (due) add(95, 'warn', '🔁', `<strong>${plural(due, 'mistake')} due for review.</strong> Spaced review is how a miss turns into a point.`, { label: 'Start review', fn: "startReview('due')" });
-
   // Unlogged misses
   const unlogged = getTotalUnlogged();
-  if (unlogged) add(90, 'warn', '📝', `<strong>${plural(unlogged, 'missed question')} not explained yet.</strong> You can't fix a pattern you haven't written down.`, { label: 'Log them', fn: 'openUnloggedPicker()' });
-
-  // Streak
-  if (typeof getStreak === 'function') {
-    const { current, practicedToday } = getStreak();
-    if (current >= 2 && !practicedToday) add(85, 'warn', '🔥', `<strong>Keep your ${current}-day streak alive</strong> — log a set or clear a few reviews today.`, { label: 'Log practice', fn: 'openLogEditor()' });
-    else if (current >= 3) add(30, 'good', '🔥', `<strong>${current}-day streak.</strong> Consistency beats cramming — keep stacking days.`);
-  }
+  if (unlogged) add(90, 'warn', '📝', `<strong>${plural(unlogged, 'missed question')} not explained yet.</strong> You can't fix a pattern you haven't written down.`, { label: 'Explain them', fn: 'openUnloggedPicker()' });
 
   // Section accuracy: weakest + 2-week momentum
   const recentStart = addDaysISO(today, -13), priorStart = addDaysISO(today, -27), priorEnd = addDaysISO(today, -14);
@@ -348,7 +336,7 @@ function generateInsights() {
     if (timed.length < 3) return;
     const { secPerQ } = summarizeSessions(timed);
     const tgt = getTargetPace(sec.key);
-    if (secPerQ > tgt * 1.12) add(48, 'warn', '⏱️', `<strong>${sec.name} pace: ${formatPace(secPerQ)} per question</strong> vs. ${formatPace(tgt)} on test day. Practice timed sets and triage long calculations.`, { label: 'Start timer', fn: `openTimer('${sec.key}')` });
+    if (secPerQ > tgt * 1.12) add(48, 'warn', '⏱️', `<strong>${sec.name} pace: ${formatPace(secPerQ)} per question</strong> vs. ${formatPace(tgt)} on test day. Practice timed sets and triage long calculations.`);
   });
 
   // Full-lengths
@@ -372,12 +360,6 @@ function generateInsights() {
     add(32, 'info', '🏛️', aamc.accuracy > third.accuracy
       ? `<strong>You score ${aamc.accuracy - third.accuracy} pts higher on AAMC</strong> (${aamc.accuracy}%) than third-party material (${third.accuracy}%). Normal — third-party runs harder. AAMC is the better predictor.`
       : `<strong>Your AAMC accuracy (${aamc.accuracy}%) trails third-party (${third.accuracy}%).</strong> AAMC logic is its own skill — prioritize AAMC material and review its reasoning closely.`);
-  }
-
-  // Weekly goal
-  if (typeof getWeekProgress === 'function') {
-    const { done, goal } = getWeekProgress();
-    if (done >= goal) add(40, 'good', '🏆', `<strong>Weekly goal smashed:</strong> ${done.toLocaleString()} / ${goal.toLocaleString()} questions this week.`);
   }
 
   // Backup reminder

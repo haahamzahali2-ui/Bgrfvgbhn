@@ -93,8 +93,7 @@ function renderMistakes() {
   const list = getFilteredMistakes();
   const due = db.mistakes.filter(isMistakeDue).length;
 
-  document.getElementById('mistakeCountLabel').textContent =
-    `${plural(db.mistakes.length, 'mistake')} logged · ${due} due for review · ${db.mistakes.filter(m => getMistakeStatus(m) === 'mastered').length} mastered`;
+  document.getElementById('mistakeCountLabel').textContent = `${plural(db.mistakes.length, 'question')} you got wrong, all in one place`;
   document.getElementById('mistakeFilterStats').textContent = list.length !== db.mistakes.length ? `${plural(list.length, 'match', 'matches')}` : '';
 
   renderUnloggedBanner();
@@ -121,12 +120,12 @@ function renderMistakes() {
     const status = getMistakeStatus(m);
     const due = isMistakeDue(m);
     const statusLabel = due ? 'Due' : { new: 'New', learning: 'Learning', mastered: 'Mastered' }[status];
-    return `<div class="mistake-card" style="--bucket-color:${b.color}" onclick="openEditMistakeModal(${jsArg(m.id)})">
+    return `<div class="mistake-card" style="--bucket-color:${b.color}" onclick="openMistakeFromCard(${jsArg(m.id)})">
       <div class="mistake-card-stripe"></div>
       <div class="mistake-card-body">
         <div class="mistake-card-top">
           ${errorChipHtml(m)}
-          <span class="mistake-status ${due ? 'due' : status}">${statusLabel}</span>
+
         </div>
         <div class="mistake-card-concept">${escapeHtml(m.concept) || escapeHtml(m.subject) || 'Untitled'}</div>
         <div class="mistake-card-meta">
@@ -144,7 +143,7 @@ function renderMistakes() {
             ${m.myAnswer && m.correctAnswer ? `<span class="answer-flip" title="Your answer → correct answer">${escapeHtml(m.myAnswer)} → ${escapeHtml(m.correctAnswer)}</span>` : ''}
             ${m.anki ? '<span title="Flagged for Anki">🃏</span>' : ''}
             ${linkChipHtml(m.link || getSessionLinks(db.sessions.find(x => x.id === m.sessionId))[0] || '', m.link ? 'Q' : 'Passage')}
-            <span class="mistake-next" title="Next review">${status === 'mastered' && !due ? '✓' : '↻'} ${due ? 'review now' : relativeDay(m.review.due)}</span>
+
           </span>
         </div>
       </div>
@@ -155,6 +154,14 @@ function renderMistakes() {
 function showMoreHtml(total, shown, onclick) {
   if (total <= shown) return '';
   return `<div class="show-more-wrap"><button class="confetti-btn" onclick="${onclick}">Show ${Math.min(PAGE_SIZE, total - shown)} more <span>· ${total - shown} remaining</span></button></div>`;
+}
+
+// Mistakes that belong to a passage open that passage; standalone ones open the small form
+function openMistakeFromCard(id) {
+  const m = db.mistakes.find(x => x.id === id);
+  if (!m) return;
+  if (m.sessionId && db.sessions.some(s => s.id === m.sessionId)) openLogEditor({ sessionId: m.sessionId, focusMistakes: true });
+  else openEditMistakeModal(id);
 }
 
 function renderUnloggedBanner() {
@@ -168,7 +175,7 @@ function renderUnloggedBanner() {
     <div class="unlogged-icon">📝</div>
     <div class="unlogged-text"><strong>${plural(n, 'missed question')}</strong> across ${plural(sets.length, 'set')} still ${n === 1 ? 'has' : 'have'} no log.
       <span>The fastest way to raise your score is to know <em>why</em> you miss.</span></div>
-    <button class="btn-save" onclick="openUnloggedPicker()">Log them →</button>
+    <button class="btn-save" onclick="openUnloggedPicker()">Explain them →</button>
   `;
 }
 
@@ -336,15 +343,7 @@ function openEditMistakeModal(id) {
   updateMistakeSubjectOptions(); fillMistakeProviderOptions();
   renderErrorPicker(); renderAnswerChips(); setMistakeLinkLabel();
 
-  const r = m.review;
-  const info = document.getElementById('mistakeReviewInfo');
-  info.style.display = 'flex';
-  info.innerHTML = `
-    <span><strong>${{ new: 'New', learning: 'Learning', mastered: 'Mastered' }[getMistakeStatus(m)]}</strong></span>
-    <span>Reviewed ${plural(r.reps, 'time')}</span>
-    <span>${r.lapses ? plural(r.lapses, 'lapse') : 'no lapses'}</span>
-    <span>Next: ${isMistakeDue(m) ? 'due now' : relativeDay(r.due)}</span>
-    <button type="button" class="filter-clear-btn" onclick="resetMistakeReview()">Reset schedule</button>`;
+  document.getElementById('mistakeReviewInfo').style.display = 'none';
   document.getElementById('mistakeDeleteBar').classList.remove('show');
   document.getElementById('mistakeDeleteTrigger').style.display = 'inline-block';
   openModal('mistakeModal');

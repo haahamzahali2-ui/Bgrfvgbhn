@@ -14,47 +14,19 @@
 <div class="topbar">
   <div class="topbar-left" style="cursor:pointer" onclick="showPage('home')">
     <div class="topbar-logo">MC</div>
-    <div class="topbar-wordmark">
-      <div class="topbar-title">MCAT Prep</div>
-      <div class="topbar-subtitle">Progress Tracker</div>
-    </div>
+    <div class="topbar-title">MCAT Prep</div>
   </div>
+  <nav class="topnav">
+    <button class="nav-group" data-group="home" onclick="showGroup('home')">Home</button>
+    <button class="nav-group" data-group="log" onclick="showGroup('log')">Log</button>
+    <button class="nav-group" data-group="history" onclick="showGroup('history')">History</button>
+    <button class="nav-group" data-group="exams" onclick="showGroup('exams')">Exams</button>
+    <button class="nav-group" data-group="stats" onclick="showGroup('stats')">Stats</button>
+  </nav>
   <div class="topbar-right">
-    <div class="topbar-stats-group">
-      <div class="topbar-stat">
-        <div class="topbar-stat-val" id="stat-questions">—</div>
-        <div class="topbar-stat-lbl">Questions</div>
-      </div>
-      <div class="topbar-stat">
-        <div class="topbar-stat-val" id="stat-accuracy">—</div>
-        <div class="topbar-stat-lbl">Accuracy</div>
-      </div>
-      <div class="topbar-stat" style="cursor:pointer" onclick="showPage('review')">
-        <div class="topbar-stat-val" id="stat-due">—</div>
-        <div class="topbar-stat-lbl">Due Reviews</div>
-      </div>
-      <div class="topbar-stat" style="cursor:pointer" onclick="openSettingsModal()">
-        <div class="topbar-stat-val" id="stat-days-left">—</div>
-        <div class="topbar-stat-lbl">Days to Test</div>
-      </div>
-    </div>
-    <div class="topbar-clock">
-      <div class="topbar-clock-time" id="topbarClock">--:--</div>
-      <div class="topbar-clock-date" id="topbarDate">---</div>
-    </div>
-    <button class="dark-toggle palette-trigger" onclick="openPalette()" title="Command palette (Ctrl/⌘ K)">⌕ <span>⌘K</span></button>
-    <button class="dark-toggle timer-btn" id="timerBtn" onclick="toggleTimerPanel()" title="Study timer (T)">⏱</button>
-    <button class="dark-toggle" onclick="openSettingsModal()" title="Settings &amp; backup">⚙️</button>
-    <button class="dark-toggle" onclick="toggleDarkMode()" title="Toggle dark mode (D)" id="darkToggleBtn">🌙</button>
+    <button class="dark-toggle" onclick="openSettingsModal()" title="Settings">⚙️</button>
   </div>
 </div>
-<!-- SUB-NAV -->
-<nav class="subnav">
-  <button class="nav-group" data-group="home" onclick="showGroup('home')"><span>🏠</span> Home</button>
-  <button class="nav-group" data-group="log" onclick="showGroup('log')"><span>📝</span> Daily Log</button>
-  <button class="nav-group" data-group="review" onclick="showGroup('review')"><span>🔁</span> Review <em class="nav-count" id="navDueCount"></em></button>
-  <button class="nav-group" data-group="progress" onclick="showGroup('progress')"><span>📈</span> Progress</button>
-</nav>
 
 <!-- EASTER EGG -->
 <div class="easter-egg-overlay" id="easterEggOverlay">
@@ -73,63 +45,17 @@
      HOME PAGE — dashboard
 ════════════════════════════════════════════════════════ -->
 <div class="page active" id="page-home">
-  <div class="home-hero compact">
-    <div class="home-hero-eyebrow">Welcome Back</div>
-    <h1>MCAT <em>Prep</em> Tracker</h1>
-    <p id="homeCountdown">Set your test date to start the countdown</p>
-  </div>
-
-  <div class="home-label">What do you want to do?</div>
-  <div class="quick-actions">
-    <button class="qa-btn primary" onclick="openLogEditor()">
-      <span class="qa-icon">📝</span><span class="qa-text"><b>Log a Passage</b><small>Score + mistakes, or just a mistake</small></span>
-    </button>
-    <button class="qa-btn" onclick="startReview('due')">
-      <span class="qa-icon">🔁</span><span class="qa-text"><b>Review Mistakes</b><small id="qaReviewSub">Nothing due</small></span>
-    </button>
-    <button class="qa-btn" onclick="openTimer()">
-      <span class="qa-icon">⏱</span><span class="qa-text"><b>Start a Timed Set</b><small>Real test pace</small></span>
-    </button>
-    <button class="qa-btn" onclick="openAddFLModal()">
-      <span class="qa-icon">🧪</span><span class="qa-text"><b>Add Full-Length</b><small>Record an exam score</small></span>
-    </button>
-  </div>
-  <div id="homeTodayPrompt"></div>
-
-  <div class="home-label">Today</div>
-  <div class="today-strip" id="todayStrip"></div>
-
-  <div class="home-two-col">
-    <div class="analytics-card">
-      <div class="card-head-row">
-        <div>
-          <div class="analytics-card-title">Coach's Notes</div>
-          <div class="analytics-card-sub">Your top priorities right now</div>
-        </div>
-        <button class="filter-clear-btn" onclick="showPage('mistake-insights')">See all →</button>
-      </div>
-      <div class="insights-list" id="homeInsights"></div>
+  <div class="simple-home">
+    <div class="home-greeting">
+      <h1>MCAT <em>Prep</em></h1>
+      <p id="homeCountdown"></p>
     </div>
-    <div>
-      <div class="home-label" style="margin-top:0">Sections</div>
-      <div class="section-snapshot-row two" id="sectionSnapshotRow"></div>
-    </div>
-  </div>
-
-  <div class="home-more-toggle">
-    <button class="confetti-btn" id="homeMoreBtn" onclick="toggleHomeMore()">Study calendar &amp; milestones ▾</button>
-  </div>
-  <div id="homeMore" style="display:none;">
-    <div class="analytics-card" style="margin-top:20px;">
-      <div class="analytics-card-title">Study Activity</div>
-      <div class="analytics-card-sub">Last 26 weeks — darker means more questions. Hover any day for details.</div>
-      <div id="activityHeatmap"></div>
-    </div>
-    <div class="analytics-card" style="margin-top:28px;">
-      <div class="analytics-card-title">Milestones</div>
-      <div class="analytics-card-sub" id="milestonesSub">—</div>
-      <div class="milestones-grid" id="milestonesGrid"></div>
-    </div>
+    <button class="big-log-btn" onclick="openLogEditor()"><span>＋</span> Log a passage</button>
+    <div class="home-stats" id="homeStats"></div>
+    <div class="home-block-head"><h3>Recent passages</h3><button class="link-btn" onclick="showGroup('history')">See all →</button></div>
+    <div class="history-list" id="homeRecent"></div>
+    <div class="home-block-head"><h3>Tips for you</h3><button class="link-btn" onclick="showGroup('stats')">All stats →</button></div>
+    <div class="insights-list" id="homeInsights"></div>
   </div>
 </div><!-- /page-home -->
 
@@ -137,98 +63,78 @@
      DAILY LOG — one form for the set and every miss
 ════════════════════════════════════════════════════════ -->
 <div class="page" id="page-log">
-  <div class="pt-page-header">
-    <div class="pt-page-header-left">
-      <div>
-        <h2 class="pt-page-title" id="logTitle">Daily Log</h2>
-        <div class="pt-page-subtitle" id="logSubtitle">Log a set and everything you missed — all in one place</div>
+  <div class="quick-log">
+    <h2 class="ql-title" id="logTitle">Log a passage</h2>
+    <p class="ql-sub" id="logSubtitle">Takes about 30 seconds — only the basics are required.</p>
+    <div class="log-draft-banner" id="logDraftBanner" style="display:none;"></div>
+    <div id="logModeToggle" style="display:none;"></div>
+
+    <datalist id="logSubjectOptions"></datalist>
+    <datalist id="logProviderOptions"></datalist>
+    <datalist id="logConceptOptions"></datalist>
+
+    <section class="ql-card">
+      <div class="ql-field">
+        <label>Passage link</label>
+        <div id="logLinks"></div>
+        <button type="button" class="link-btn" onclick="addLogLink().focus()">+ another link</button>
       </div>
-    </div>
-    <div class="header-actions">
-      <button class="confetti-btn" onclick="openTimer()">⏱ Timer</button>
-    </div>
-  </div>
-  <div class="log-draft-banner" id="logDraftBanner" style="display:none;"></div>
-
-  <div class="log-mode-toggle" id="logModeToggle">
-    <button type="button" data-mode="passage" onclick="setLogMode('passage')">
-      <span class="lm-icon">📝</span><span><b>Log a passage / set</b><small>Score, time, link — plus every question you missed</small></span>
-    </button>
-    <button type="button" data-mode="mistake" onclick="setLogMode('mistake')">
-      <span class="lm-icon">❌</span><span><b>Just log a mistake</b><small>One question — no score needed</small></span>
-    </button>
-  </div>
-
-  <datalist id="logSubjectOptions"></datalist>
-  <datalist id="logProviderOptions"></datalist>
-  <datalist id="logConceptOptions"></datalist>
-
-  <div class="log-layout">
-    <div class="log-main">
-      <section class="log-card">
-        <div class="mk-step"><span>1</span> What did you do?</div>
-        <div class="form-row-quad">
-          <div class="form-row"><label>Date</label><input type="date" id="log-date" /></div>
-          <div class="form-row">
-            <label>Section</label>
-            <select id="log-section">
-              <option value="cp">Chem/Phys (C/P)</option>
-              <option value="cars">CARS</option>
-              <option value="bb">Bio/Biochem (B/B)</option>
-              <option value="ps">Psych/Soc (P/S)</option>
-            </select>
-          </div>
+      <div class="ql-field">
+        <label>Section</label>
+        <div class="pick-chips" id="logSectionChips"></div>
+        <select id="log-section" hidden>
+          <option value="cp">Chem/Phys (C/P)</option>
+          <option value="cars">CARS</option>
+          <option value="bb">Bio/Biochem (B/B)</option>
+          <option value="ps">Psych/Soc (P/S)</option>
+        </select>
+      </div>
+      <div class="ql-field">
+        <label>Provider</label>
+        <div class="pick-chips" id="logProviderChips"></div>
+        <input type="text" id="log-provider" list="logProviderOptions" placeholder="or type one…" />
+      </div>
+      <div class="ql-field log-score-only">
+        <label>Score</label>
+        <div class="score-inputs">
+          <input type="number" min="0" id="log-correct" placeholder="Right" />
+          <span>out of</span>
+          <input type="number" min="1" id="log-total" placeholder="Total" />
+          <span class="score-pill" id="logScorePill"></span>
+        </div>
+      </div>
+      <button type="button" class="link-btn" id="logMoreSetBtn" onclick="toggleBlock('logMoreSet', this, '+ More')">+ More ▾ <small>subject, time, date, name, notes</small></button>
+      <div id="logMoreSet" style="display:none;">
+        <div class="form-row-pair">
           <div class="form-row"><label>Subject</label><input type="text" id="log-subject" list="logSubjectOptions" placeholder="e.g. Biochemistry" /></div>
-          <div class="form-row"><label>Provider</label><input type="text" id="log-provider" list="logProviderOptions" placeholder="e.g. Jack Westin" /></div>
-        </div>
-        <div class="form-row"><label>Passage / set name <span class="label-opt">(optional)</span></label><input type="text" id="log-topic" placeholder="e.g. JW Daily CARS — 'The Ethics of Memory', UWorld Block 12" /></div>
-        <div class="form-row">
-          <label>Link to the passage or set</label>
-          <div id="logLinks"></div>
-          <button type="button" class="filter-clear-btn log-add-link" onclick="addLogLink().focus()">+ Add another link</button>
-        </div>
-        <div class="form-row-triple log-score-only">
-          <div class="form-row"><label>Questions</label><input type="number" min="1" id="log-total" placeholder="e.g. 6" /></div>
-          <div class="form-row"><label>Correct</label><input type="number" min="0" id="log-correct" placeholder="e.g. 4" /></div>
           <div class="form-row"><label>Minutes</label><input type="number" min="0" id="log-minutes" placeholder="e.g. 10" /></div>
         </div>
-      </section>
-
-      <section class="log-card" id="logItemsSection">
-        <div class="mk-step"><span>2</span> <span class="mk-step-title" id="logStep2Title">Questions you missed</span> <small id="logMissCount"></small></div>
-        <div id="logItems"></div>
-        <div class="log-item-actions">
-          <button type="button" class="analytics-export-btn" onclick="addMissCard(false)">+ Add a missed question</button>
-          <button type="button" class="confetti-btn log-score-only" onclick="addMissCard(true)">+ Add a lucky guess 🍀</button>
-          <span class="log-item-tools">
-            <button type="button" class="filter-clear-btn" onclick="setAllQcards(true)">Expand all</button>
-            <button type="button" class="filter-clear-btn" onclick="setAllQcards(false)">Collapse all</button>
-          </span>
+        <div class="form-row-pair">
+          <div class="form-row"><label>Date</label><input type="date" id="log-date" /></div>
+          <div class="form-row"><label>Passage name</label><input type="text" id="log-topic" placeholder="e.g. The Ethics of Memory" /></div>
         </div>
-      </section>
-
-      <section class="log-card log-score-only">
-        <div class="mk-step"><span>3</span> Reflection <small>optional</small></div>
-        <div class="form-row"><textarea id="log-notes" placeholder="How did it go? Timing, focus, what you'll change tomorrow…"></textarea></div>
-      </section>
-    </div>
-
-    <aside class="log-side">
-      <div class="log-summary-card">
-        <div class="today-label">This Entry</div>
-        <div id="logSummary"></div>
-        <button class="btn-save log-save" id="logSaveBtn" onclick="saveLogEntry()">Save Entry</button>
-        <button class="btn-cancel log-cancel" onclick="cancelLogEntry()">Cancel</button>
-        <button class="log-delete" id="logDeleteTrigger" onclick="document.getElementById('logDeleteBar').classList.add('show')">Delete entry</button>
-        <div class="confirm-delete-bar" id="logDeleteBar">
-          <p>Delete this entry?</p>
-          <label class="toggle-row"><input type="checkbox" id="logDeleteMistakes" checked /> <span>Also delete its logged questions</span></label>
-          <button class="btn-del-confirm" onclick="confirmDeleteLogEntry()">Delete</button>
-          <button class="btn-cancel" onclick="document.getElementById('logDeleteBar').classList.remove('show')" style="padding:7px 14px">Cancel</button>
-        </div>
-        <div class="log-autosave-note">Drafts save automatically while you type.</div>
+        <div class="form-row"><label>Notes</label><textarea id="log-notes" placeholder="How did it go?"></textarea></div>
       </div>
-    </aside>
+    </section>
+
+    <section class="ql-card" id="logItemsSection">
+      <div class="ql-card-head"><h3 id="logStep2Title">Questions you missed</h3><small id="logMissCount"></small></div>
+      <div id="logItems"></div>
+      <button type="button" class="link-btn" onclick="addMissCard(false)">+ Add a question</button>
+    </section>
+
+    <div class="ql-savebar">
+      <div class="ql-summary" id="logSummary"></div>
+      <button class="btn-cancel" onclick="cancelLogEntry()">Cancel</button>
+      <button class="btn-save" id="logSaveBtn" onclick="saveLogEntry()">Save</button>
+    </div>
+    <button class="log-delete" id="logDeleteTrigger" onclick="document.getElementById('logDeleteBar').classList.add('show')">Delete this passage</button>
+    <div class="confirm-delete-bar" id="logDeleteBar">
+      <p>Delete this passage?</p>
+      <label class="toggle-row"><input type="checkbox" id="logDeleteMistakes" checked /> <span>Also delete its questions</span></label>
+      <button class="btn-del-confirm" onclick="confirmDeleteLogEntry()">Delete</button>
+      <button class="btn-cancel" onclick="document.getElementById('logDeleteBar').classList.remove('show')" style="padding:7px 14px">Cancel</button>
+    </div>
   </div>
 </div><!-- /page-log -->
 
@@ -246,7 +152,7 @@
     <div class="header-actions">
       <button class="pt-add-btn" onclick="openLogEditor()">
         <span class="pt-add-btn-icon">+</span>
-        Log a Passage
+        Log a passage
       </button>
     </div>
   </div>
@@ -303,7 +209,7 @@
     <div class="header-actions">
       <button class="pt-add-btn" onclick="openLogEditor()">
         <span class="pt-add-btn-icon">+</span>
-        Log a Passage
+        Log a passage
       </button>
     </div>
   </div>
@@ -326,17 +232,6 @@
   </div>
 
   <div class="pt-filter-row">
-    <div class="pt-filter-group">
-      <span class="pt-filter-label">Show</span>
-      <div class="pt-chip-row">
-        <button class="pt-chip active" onclick="setMistakeFilter('status','all',this)">All</button>
-        <button class="pt-chip" onclick="setMistakeFilter('status','due',this)">🔁 Due</button>
-        <button class="pt-chip" onclick="setMistakeFilter('status','new',this)">New</button>
-        <button class="pt-chip" onclick="setMistakeFilter('status','mastered',this)">🏅 Mastered</button>
-        <button class="pt-chip" onclick="setMistakeFilter('status','anki',this)">🃏 Anki</button>
-      </div>
-    </div>
-    <div class="pt-filter-divider"></div>
     <div class="pt-filter-group">
       <span class="pt-filter-label">Section</span>
       <div class="pt-chip-row">
@@ -457,7 +352,7 @@
         <div class="analytics-card-sub">Concepts you've missed more than once — these need content review, not more questions</div>
         <div class="table-scroll">
           <table class="patient-breakdown-table" id="repeatTable">
-            <thead><tr><th>Concept</th><th>Subject</th><th>Missed</th><th>Main Error</th><th>Last</th><th>Mastered</th></tr></thead>
+            <thead><tr><th>Concept</th><th>Subject</th><th>Missed</th><th>Main Error</th><th>Last</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -472,34 +367,6 @@
   </div>
 </div><!-- /page-mistake-insights -->
 
-<!-- ═══════════════════════════════════════════════════════
-     REVIEW QUEUE — spaced repetition
-════════════════════════════════════════════════════════ -->
-<div class="page" id="page-review">
-  <div class="pt-page-header">
-    <div class="pt-page-header-left">
-      <button class="back-btn" onclick="showPage('home')">&#8592; Home</button>
-      <div>
-        <h2 class="pt-page-title">Review Queue</h2>
-        <div class="pt-page-subtitle" id="reviewCountLabel">Loading…</div>
-      </div>
-    </div>
-    <div class="breakdown-tabs inline" style="margin:0">
-      <button class="breakdown-tab active" onclick="setReviewScope('all', this)">All</button>
-      <button class="breakdown-tab" onclick="setReviewScope('cp', this)">C/P</button>
-      <button class="breakdown-tab" onclick="setReviewScope('cars', this)">CARS</button>
-      <button class="breakdown-tab" onclick="setReviewScope('bb', this)">B/B</button>
-      <button class="breakdown-tab" onclick="setReviewScope('ps', this)">P/S</button>
-    </div>
-  </div>
-  <div class="analytics-summary-row" id="reviewKPIs"></div>
-  <div class="review-stage" id="reviewStage"></div>
-  <div class="analytics-card" style="margin-top:28px;">
-    <div class="analytics-card-title">Upcoming Reviews</div>
-    <div class="analytics-card-sub">Cards due over the next two weeks. Again → tomorrow · Good → interval × ease · mastered at 21+ days.</div>
-    <div class="analytics-chart-container" style="height:200px;"><canvas id="reviewForecastChart"></canvas></div>
-  </div>
-</div><!-- /page-review -->
 
 <!-- ═══════════════════════════════════════════════════════
      FULL-LENGTH EXAMS
@@ -760,57 +627,10 @@
   </div>
 </div><!-- /page-deep-dive -->
 
-<!-- ═══════════════════════════════════════════════════════
-     CONTENT TRACKER — high-yield outline
-════════════════════════════════════════════════════════ -->
-<div class="page" id="page-content">
-  <div class="section-header">
-    <button class="back-btn" onclick="showPage('home')">&#8592; Home</button>
-    <h2>Content Tracker</h2>
-  </div>
-  <div class="analytics-summary-row" id="contentKPIs"></div>
-  <div class="pt-controls-bar">
-    <div class="pt-search-wrap">
-      <svg class="pt-search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      <input type="text" id="contentSearch" class="pt-search-input" placeholder="Search topics…" oninput="filterContentTopics()" />
-    </div>
-    <button class="confetti-btn" onclick="expandAllContent(true)">Expand all</button>
-    <button class="confetti-btn" onclick="expandAllContent(false)">Collapse all</button>
-  </div>
-  <div class="pt-filter-row">
-    <div class="pt-filter-group">
-      <span class="pt-filter-label">Show</span>
-      <div class="pt-chip-row" id="contentFilterChips">
-        <button class="pt-chip active" data-f="all" onclick="setContentFilter('all',this)">All</button>
-        <button class="pt-chip" data-f="weak" onclick="setContentFilter('weak',this)">🔥 Weak spots</button>
-        <button class="pt-chip" data-f="none" onclick="setContentFilter('none',this)">Not started</button>
-        <button class="pt-chip" data-f="learning" onclick="setContentFilter('learning',this)">Learning</button>
-        <button class="pt-chip" data-f="reviewed" onclick="setContentFilter('reviewed',this)">Reviewed</button>
-        <button class="pt-chip" data-f="confident" onclick="setContentFilter('confident',this)">Confident</button>
-      </div>
-    </div>
-    <span class="pt-filter-stats">Mistake counts link to your journal</span>
-  </div>
-  <div class="content-groups" id="contentGroups"></div>
-</div><!-- /page-content -->
 
   </div><!-- /main -->
 </div><!-- /layout -->
 
-<!-- ═══════════════════════════════════════════════════════
-     STUDY TIMER — floating panel
-════════════════════════════════════════════════════════ -->
-<div class="timer-panel" id="timerPanel">
-  <div class="timer-head">
-    <div class="timer-title">Study Timer</div>
-    <div class="chart-toggle" id="timerModeTabs">
-      <button data-mode="set" onclick="setTimerMode('set')">Timed Set</button>
-      <button data-mode="focus" onclick="setTimerMode('focus')">Focus 25/5</button>
-    </div>
-    <button class="timer-close" onclick="closeTimer()" title="Hide (keeps running)">✕</button>
-  </div>
-  <div id="timerBody"></div>
-</div>
 
 <!-- ═══════════════════════════════════════════════════════
      COMMAND PALETTE
@@ -962,12 +782,10 @@
       <div class="form-row"><label>Test Date</label><input type="date" id="set-test-date" /></div>
       <div class="form-row"><label>Target Score</label><input type="number" min="472" max="528" id="set-target" placeholder="e.g. 515" /></div>
     </div>
-    <div class="form-row-triple">
+    <div class="form-row-pair">
       <div class="form-row"><label>Target Accuracy %</label><input type="number" min="1" max="100" id="set-target-acc" placeholder="75" /></div>
-      <div class="form-row"><label>Weekly Q Goal</label><input type="number" min="1" id="set-weekly-goal" placeholder="300" /></div>
-      <div class="form-row"><label>Daily Reviews</label><input type="number" min="1" id="set-review-goal" placeholder="20" /></div>
+      <div class="form-row"><label>Theme</label><button type="button" class="confetti-btn" id="darkToggleBtn" onclick="toggleDarkMode()">🌙</button></div>
     </div>
-    <label class="toggle-row"><input type="checkbox" id="set-prompt-mistakes" /> <span>After logging a set with misses, open <strong>"What went wrong?"</strong> right away</span></label>
     <div class="gold-line" style="margin:22px 0;"></div>
     <div class="settings-data-label">Your data lives in this browser. Back it up regularly — especially before switching devices.</div>
     <div class="settings-data-row">
@@ -993,7 +811,7 @@
 </div>
 
 <div class="print-report" id="printReport"></div>
-<div class="kbd-hint" id="kbdHint"></div>
+<div class="kbd-hint" id="kbdHint" style="display:none"></div>
 <div class="toast" id="toast"></div>
 
 <script src="core.js"></script>
