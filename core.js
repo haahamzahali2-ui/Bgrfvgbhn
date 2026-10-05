@@ -482,6 +482,7 @@ function refreshAll() {
   const renderers = {
     'home': () => renderHome(),
     'practice-list': () => renderSessions(),
+    'log': () => updateLogSummary(),
     'fl-list': () => renderFullLengths(),
     'analytics': () => renderAnalytics(),
     'mistakes': () => renderMistakes(),

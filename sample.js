@@ -55,6 +55,20 @@ const SAMPLE_NOTES = {
   guess:      [['Guessed between two and got lucky', 'Review until it\'s not a guess']]
 };
 
+const SAMPLE_LINKS = {
+  'Jack Westin': 'https://jackwestin.com/resources/mcat-cars/daily-passages',
+  'Khan Academy': 'https://www.khanacademy.org/test-prep/mcat',
+  'AAMC': 'https://students-residents.aamc.org/prepare-mcat-exam/prepare-mcat-exam'
+};
+
+const SAMPLE_QUESTIONS = {
+  content: 'Which statement best describes the mechanism?', recall: 'Which term matches the description?',
+  math: 'What is the approximate value of the quantity?', data: 'Which conclusion is best supported by Figure 1?',
+  misread_q: 'Which of the following is NOT consistent with the passage?', misread_p: 'According to the passage, the researchers found…',
+  scope: 'The author would most likely agree that…', narrowed: 'Which choice best strengthens the author\'s claim?',
+  distractor: 'Which explanation accounts for the result?', research: 'Which change would improve the study\'s validity?'
+};
+
 function pickWeighted(weights, rnd) {
   const entries = Object.entries(weights);
   const total = entries.reduce((a, [, w]) => a + w, 0);
@@ -81,7 +95,8 @@ function loadSampleData() {
       const correct = Math.round(total * acc);
       const minutes = Math.round(total * (getTargetPace(section) / 60) * (1.18 - progress) * (0.9 + rnd() * 0.2));
       const id = newId('SET');
-      sets.push({ id, createdAt: Date.now() - day * 86400000 + k, date, section, subject, provider, topic, total, correct, minutes, notes: '' });
+      const links = SAMPLE_LINKS[provider] ? [SAMPLE_LINKS[provider]] : [];
+      sets.push({ id, createdAt: Date.now() - day * 86400000 + k, date, section, subject, provider, topic, links, total, correct, minutes, notes: '' });
 
       // Log most misses (older sets more completely), skip some so "unlogged" shows up
       const missed = total - correct;
@@ -99,7 +114,7 @@ function loadSampleData() {
         const myAnswer = errorType === 'guess' ? correctAnswer : letters.filter(l => l !== correctAnswer)[Math.floor(rnd() * 3)];
         mistakes.push(normalizeMistake({
           id: newId('MK'), createdAt: Date.now() - day * 86400000 + k * 100 + q, date, section, subject, provider, sessionId: id,
-          concept, questionRef: `Q${Math.floor(rnd() * total) + 1}`, question: '', what, takeaway,
+          concept, questionRef: `Q${Math.floor(rnd() * total) + 1}`, question: SAMPLE_QUESTIONS[errorType] || '', what, takeaway,
           errorType, myAnswer, correctAnswer, tags: [], anki: rnd() < 0.25
         }));
       }

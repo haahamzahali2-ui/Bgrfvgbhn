@@ -51,8 +51,8 @@
 <!-- SUB-NAV -->
 <nav class="subnav">
   <button class="nav-group" data-group="home" onclick="showGroup('home')"><span>🏠</span> Home</button>
-  <button class="nav-group" data-group="practice" onclick="showGroup('practice')"><span>📚</span> Practice</button>
-  <button class="nav-group" data-group="mistakes" onclick="showGroup('mistakes')"><span>❌</span> Mistakes <em class="nav-count" id="navDueCount"></em></button>
+  <button class="nav-group" data-group="log" onclick="showGroup('log')"><span>📝</span> Daily Log</button>
+  <button class="nav-group" data-group="review" onclick="showGroup('review')"><span>🔁</span> Review <em class="nav-count" id="navDueCount"></em></button>
   <button class="nav-group" data-group="progress" onclick="showGroup('progress')"><span>📈</span> Progress</button>
 </nav>
 
@@ -81,19 +81,20 @@
 
   <div class="home-label">What do you want to do?</div>
   <div class="quick-actions">
-    <button class="qa-btn primary" onclick="openAddSessionModal()">
-      <span class="qa-icon">➕</span><span class="qa-text"><b>Log Practice</b><small>Record a question set</small></span>
-    </button>
-    <button class="qa-btn" onclick="openAddMistakeModal()">
-      <span class="qa-icon">❌</span><span class="qa-text"><b>Log a Mistake</b><small>What went wrong?</small></span>
+    <button class="qa-btn primary" onclick="openLogEditor()">
+      <span class="qa-icon">📝</span><span class="qa-text"><b>Log Today's Practice</b><small>Set + what went wrong, in one go</small></span>
     </button>
     <button class="qa-btn" onclick="startReview('due')">
       <span class="qa-icon">🔁</span><span class="qa-text"><b>Review Mistakes</b><small id="qaReviewSub">Nothing due</small></span>
+    </button>
+    <button class="qa-btn" onclick="openTimer()">
+      <span class="qa-icon">⏱</span><span class="qa-text"><b>Start a Timed Set</b><small>Real test pace</small></span>
     </button>
     <button class="qa-btn" onclick="openAddFLModal()">
       <span class="qa-icon">🧪</span><span class="qa-text"><b>Add Full-Length</b><small>Record an exam score</small></span>
     </button>
   </div>
+  <div id="homeTodayPrompt"></div>
 
   <div class="home-label">Today</div>
   <div class="today-strip" id="todayStrip"></div>
@@ -133,30 +134,119 @@
 </div><!-- /page-home -->
 
 <!-- ═══════════════════════════════════════════════════════
+     DAILY LOG — one form for the set and every miss
+════════════════════════════════════════════════════════ -->
+<div class="page" id="page-log">
+  <div class="pt-page-header">
+    <div class="pt-page-header-left">
+      <div>
+        <h2 class="pt-page-title" id="logTitle">Daily Log</h2>
+        <div class="pt-page-subtitle" id="logSubtitle">Log a set and everything you missed — all in one place</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="confetti-btn" onclick="openTimer()">⏱ Timer</button>
+    </div>
+  </div>
+  <div class="log-draft-banner" id="logDraftBanner" style="display:none;"></div>
+
+  <datalist id="logSubjectOptions"></datalist>
+  <datalist id="logProviderOptions"></datalist>
+  <datalist id="logConceptOptions"></datalist>
+
+  <div class="log-layout">
+    <div class="log-main">
+      <section class="log-card">
+        <div class="mk-step"><span>1</span> What did you do?</div>
+        <div class="form-row-quad">
+          <div class="form-row"><label>Date</label><input type="date" id="log-date" /></div>
+          <div class="form-row">
+            <label>Section</label>
+            <select id="log-section">
+              <option value="cp">Chem/Phys (C/P)</option>
+              <option value="cars">CARS</option>
+              <option value="bb">Bio/Biochem (B/B)</option>
+              <option value="ps">Psych/Soc (P/S)</option>
+            </select>
+          </div>
+          <div class="form-row"><label>Subject</label><input type="text" id="log-subject" list="logSubjectOptions" placeholder="e.g. Biochemistry" /></div>
+          <div class="form-row"><label>Provider</label><input type="text" id="log-provider" list="logProviderOptions" placeholder="e.g. Jack Westin" /></div>
+        </div>
+        <div class="form-row"><label>Passage / set name <span class="label-opt">(optional)</span></label><input type="text" id="log-topic" placeholder="e.g. JW Daily CARS — 'The Ethics of Memory', UWorld Block 12" /></div>
+        <div class="form-row">
+          <label>Link to the passage or set</label>
+          <div id="logLinks"></div>
+          <button type="button" class="filter-clear-btn log-add-link" onclick="addLogLink().focus()">+ Add another link</button>
+        </div>
+        <div class="form-row-triple">
+          <div class="form-row"><label>Questions</label><input type="number" min="1" id="log-total" placeholder="e.g. 6" /></div>
+          <div class="form-row"><label>Correct</label><input type="number" min="0" id="log-correct" placeholder="e.g. 4" /></div>
+          <div class="form-row"><label>Minutes</label><input type="number" min="0" id="log-minutes" placeholder="e.g. 10" /></div>
+        </div>
+      </section>
+
+      <section class="log-card" id="logItemsSection">
+        <div class="mk-step"><span>2</span> Questions you missed <small id="logMissCount"></small></div>
+        <div id="logItems"></div>
+        <div class="log-item-actions">
+          <button type="button" class="analytics-export-btn" onclick="addMissCard(false)">+ Add a missed question</button>
+          <button type="button" class="confetti-btn" onclick="addMissCard(true)">+ Add a lucky guess 🍀</button>
+          <span class="log-item-tools">
+            <button type="button" class="filter-clear-btn" onclick="setAllQcards(true)">Expand all</button>
+            <button type="button" class="filter-clear-btn" onclick="setAllQcards(false)">Collapse all</button>
+          </span>
+        </div>
+      </section>
+
+      <section class="log-card">
+        <div class="mk-step"><span>3</span> Reflection <small>optional</small></div>
+        <div class="form-row"><textarea id="log-notes" placeholder="How did it go? Timing, focus, what you'll change tomorrow…"></textarea></div>
+      </section>
+    </div>
+
+    <aside class="log-side">
+      <div class="log-summary-card">
+        <div class="today-label">This Entry</div>
+        <div id="logSummary"></div>
+        <button class="btn-save log-save" id="logSaveBtn" onclick="saveLogEntry()">Save Entry</button>
+        <button class="btn-cancel log-cancel" onclick="cancelLogEntry()">Cancel</button>
+        <button class="log-delete" id="logDeleteTrigger" onclick="document.getElementById('logDeleteBar').classList.add('show')">Delete entry</button>
+        <div class="confirm-delete-bar" id="logDeleteBar">
+          <p>Delete this entry?</p>
+          <label class="toggle-row"><input type="checkbox" id="logDeleteMistakes" checked /> <span>Also delete its logged questions</span></label>
+          <button class="btn-del-confirm" onclick="confirmDeleteLogEntry()">Delete</button>
+          <button class="btn-cancel" onclick="document.getElementById('logDeleteBar').classList.remove('show')" style="padding:7px 14px">Cancel</button>
+        </div>
+        <div class="log-autosave-note">Drafts save automatically while you type.</div>
+      </div>
+    </aside>
+  </div>
+</div><!-- /page-log -->
+
+<!-- ═══════════════════════════════════════════════════════
      PRACTICE LOG — view / add / edit practice sets
 ════════════════════════════════════════════════════════ -->
 <div class="page" id="page-practice-list">
   <div class="pt-page-header">
     <div class="pt-page-header-left">
-      <button class="back-btn" onclick="showPage('home')">&#8592; Home</button>
       <div>
-        <h2 class="pt-page-title">Practice Log</h2>
+        <h2 class="pt-page-title">Log History</h2>
         <div class="pt-page-subtitle" id="practiceCountLabel">Loading…</div>
       </div>
     </div>
     <div class="header-actions">
-      <button class="analytics-export-btn" onclick="openTimer()">⏱ Timed set</button>
-      <button class="pt-add-btn" onclick="openAddSessionModal()">
+      <button class="pt-add-btn" onclick="openLogEditor()">
         <span class="pt-add-btn-icon">+</span>
-        Log Practice
+        New Entry
       </button>
     </div>
   </div>
+  <div id="historyToday"></div>
 
   <div class="pt-controls-bar">
     <div class="pt-search-wrap">
       <svg class="pt-search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      <input type="text" id="practiceSearch" class="pt-search-input" placeholder="Search subject, provider, topic, or notes…" oninput="filterSessions()" />
+      <input type="text" id="practiceSearch" class="pt-search-input" placeholder="Search subject, provider, topic, links, questions, takeaways…" oninput="filterSessions()" />
     </div>
     <button class="confetti-btn" onclick="exportSessionsCSV()">⬇ Export</button>
   </div>
@@ -186,7 +276,7 @@
   </div>
   <div class="active-filters" id="practiceActiveFilters" style="display:none;"></div>
 
-  <div class="sessions-grid" id="sessionsGrid"></div>
+  <div class="history-list" id="sessionsGrid"></div>
 </div><!-- /page-practice-list -->
 
 <!-- ═══════════════════════════════════════════════════════
@@ -202,9 +292,9 @@
       </div>
     </div>
     <div class="header-actions">
-      <button class="pt-add-btn" onclick="openAddMistakeModal()">
+      <button class="pt-add-btn" onclick="openLogEditor()">
         <span class="pt-add-btn-icon">+</span>
-        Log Mistake
+        New Log Entry
       </button>
     </div>
   </div>
@@ -653,78 +743,6 @@
      MODALS
 ════════════════════════════════════════════════════════ -->
 
-<!-- ADD / EDIT PRACTICE SET MODAL -->
-<div class="modal-overlay" id="sessionModal">
-  <div class="modal" style="max-width:540px;">
-    <h3 id="sessionModalTitle">Log Practice</h3>
-    <div class="modal-sub">Record a question set, passage block, or section bank</div>
-    <div class="form-row-pair">
-      <div class="form-row"><label>Date</label><input type="date" id="ses-date" /></div>
-      <div class="form-row">
-        <label>MCAT Section</label>
-        <select id="ses-section" onchange="updateSubjectOptions()">
-          <option value="cp">Chem/Phys (C/P)</option>
-          <option value="cars">CARS</option>
-          <option value="bb">Bio/Biochem (B/B)</option>
-          <option value="ps">Psych/Soc (P/S)</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-row-pair">
-      <div class="form-row">
-        <label>Subject</label>
-        <input type="text" id="ses-subject" placeholder="e.g. Biochemistry" list="subjectOptions" />
-        <datalist id="subjectOptions"></datalist>
-      </div>
-      <div class="form-row">
-        <label>Provider</label>
-        <input type="text" id="ses-provider" placeholder="e.g. Jack Westin" list="providerOptions" />
-        <datalist id="providerOptions"></datalist>
-      </div>
-    </div>
-    <div class="form-row"><label>Topic / Set Name <span class="label-opt">(optional)</span></label><input type="text" id="ses-topic" placeholder="e.g. Enzyme kinetics, UWorld Block 12, Daily CARS passage" /></div>
-    <div class="form-row-triple">
-      <div class="form-row"><label>Questions</label><input type="number" min="1" id="ses-total" placeholder="e.g. 20" oninput="updateSessionPreview()" /></div>
-      <div class="form-row"><label>Correct</label><input type="number" min="0" id="ses-correct" placeholder="e.g. 15" oninput="updateSessionPreview()" /></div>
-      <div class="form-row"><label>Minutes</label><input type="number" min="0" id="ses-minutes" placeholder="e.g. 30" oninput="updateSessionPreview()" /></div>
-    </div>
-    <div class="live-preview" id="sessionLivePreview"></div>
-    <div class="form-row" style="margin-top:12px;"><label>Notes (optional)</label><textarea id="ses-notes" placeholder="Overall impressions — log individual misses in the next step"></textarea></div>
-    <div class="session-mistake-info" id="sessionMistakeInfo" style="display:none;"></div>
-    <div class="confirm-delete-bar" id="sessionDeleteBar">
-      <p>Are you sure you want to delete this practice set? Mistakes logged from it are kept.</p>
-      <button class="btn-del-confirm" onclick="confirmDeleteSession()">Delete Set</button>
-      <button class="btn-cancel" onclick="document.getElementById('sessionDeleteBar').classList.remove('show')" style="padding:7px 14px">Cancel</button>
-    </div>
-    <div class="modal-actions">
-      <button class="btn-cancel" id="sessionDeleteTrigger" onclick="document.getElementById('sessionDeleteBar').classList.add('show')" style="display:none;color:var(--alert-red);border-color:#f3b0aa;">Delete</button>
-      <button class="btn-cancel" onclick="closeModal('sessionModal')">Cancel</button>
-      <button class="btn-save" onclick="saveSession()">Save Set</button>
-    </div>
-  </div>
-</div>
-
-<!-- QUICK LOG — every miss from one set -->
-<div class="modal-overlay" id="quickLogModal">
-  <div class="modal wide">
-    <h3>What went wrong?</h3>
-    <div class="modal-sub quicklog-sub" id="quickLogSub">—</div>
-    <div class="quicklog-legend-label">Tap an error type to fill the next row — or pick per row</div>
-    <div class="quicklog-legend" id="quickLogLegend"></div>
-    <datalist id="qlTopicOptions"></datalist>
-    <div class="quicklog-rows" id="quickLogRows"></div>
-    <div class="quicklog-add">
-      <button class="filter-clear-btn" onclick="addQuickLogRow()">+ Add a miss</button>
-      <button class="filter-clear-btn" onclick="addQuickLogRow(true)">+ Add a lucky guess 🍀</button>
-      <span class="quicklog-note">Rows without an error type are skipped. You can add detail later from the journal.</span>
-    </div>
-    <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeModal('quickLogModal')">Skip for now</button>
-      <button class="btn-save" onclick="saveQuickLog()">Save Mistakes</button>
-    </div>
-  </div>
-</div>
-
 <!-- DETAILED MISTAKE MODAL -->
 <div class="modal-overlay" id="mistakeModal">
   <div class="modal wide">
@@ -769,7 +787,7 @@
       <div class="form-row"><label>Takeaway <span class="label-opt">(the rule)</span></label><textarea id="mk-takeaway" placeholder="e.g. Competitive: Km ↑, Vmax same"></textarea></div>
     </div>
 
-    <button type="button" class="confetti-btn mk-more-btn" id="mkMoreBtn" onclick="toggleBlock('mkMore', this, 'More details')">More details ▾ <small>date, question #, answers, tags, Anki</small></button>
+    <button type="button" class="confetti-btn mk-more-btn" id="mkMoreBtn" onclick="toggleBlock('mkMore', this, 'More details')">More details ▾ <small>date, question #, answers, link, tags, Anki</small></button>
     <div id="mkMore" style="display:none;">
       <div class="form-row-quad">
         <div class="form-row"><label>Date</label><input type="date" id="mk-date" /></div>
@@ -778,6 +796,9 @@
         <div class="form-row"><label>Correct Answer</label><div class="answer-chips" id="mkCorrectAnswer"></div></div>
       </div>
       <div class="form-row"><label>What was the question asking? <span class="label-opt">(becomes your review prompt)</span></label><textarea id="mk-question" placeholder="e.g. Effect of a competitive inhibitor on Km and Vmax"></textarea></div>
+      <div class="form-row-pair">
+        <div class="form-row"><label>Question link</label><input type="url" id="mk-link" placeholder="Link to the question or passage" /></div>
+      </div>
       <div class="form-row-pair">
         <div class="form-row"><label>Tags <span class="label-opt">(comma-separated)</span></label><input type="text" id="mk-tags" placeholder="e.g. high-yield, formula" /></div>
         <div class="form-row"><label>Anki</label><label class="toggle-row"><input type="checkbox" id="mk-anki" /> <span>🃏 Flag for Anki export</span></label></div>
@@ -893,6 +914,7 @@
 <script src="charts.js"></script>
 <script src="content.js"></script>
 <script src="practice.js"></script>
+<script src="logbook.js"></script>
 <script src="mistakes.js"></script>
 <script src="review.js"></script>
 <script src="insights.js"></script>

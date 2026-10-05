@@ -8,12 +8,31 @@ Everything is grouped behind four buttons at the top:
 
 | Button | What's inside |
 | --- | --- |
-| 🏠 **Home** | Big buttons for the four things you do most (log practice, log a mistake, review, add a full-length), today's progress, and your top priorities |
-| 📚 **Practice** | Practice Sets · Full-Length Exams |
-| ❌ **Mistakes** | Mistake Journal · Review · Patterns |
+| 🏠 **Home** | Big buttons for your daily actions, today's progress, and top priorities |
+| 📝 **Daily Log** | ✏️ New Entry · 📅 Log History · 🧪 Full-Lengths |
+| 🔁 **Review** | Review Queue · All Mistakes · Patterns |
 | 📈 **Progress** | Analytics · Content Checklist |
 
-Each group has a tab row at the top of the page. Rarely used options stay tucked away until you need them: **More filters**, **Export**, and **More details** in the mistake form.
+## The Daily Log: one place for everything
+
+Do a passage or a question set, then log it in one form:
+
+1. **What did you do?** Fill in the date, section, subject, and provider, the passage or set name, and **links to the passage** (add as many as you like). Then enter the number of questions, how many you got right, and the minutes it took.
+2. **Questions you missed.** A card appears for every miss. On each card, record:
+   - the question
+   - **the answer you picked**
+   - **the correct answer**
+   - **what went wrong** (15 error types, each with a fix-it tip)
+   - the concept
+   - an optional link to that exact question
+   - what happened
+   - your takeaway
+   - an Anki flag
+
+   You can also add lucky guesses.
+3. **Reflection.** Optional notes on how it went.
+
+A live sidebar shows your accuracy, pace vs. test pace, how many misses you've explained, and anything still missing. Drafts save automatically, so closing the tab won't lose your work. **Log History** shows every entry grouped by day, with links you can click and each miss listed inline. Click an entry to edit it; review history is kept.
 
 ## Pages
 

@@ -197,6 +197,7 @@ function renderReviewCard() {
         <div class="flashcard-answer">
           <div class="flashcard-error">${errorChipHtml(m)}${m.myAnswer && m.correctAnswer ? `<span class="answer-flip">You picked ${escapeHtml(m.myAnswer)} · correct ${escapeHtml(m.correctAnswer)}</span>` : ''}</div>
           ${m.what ? `<div class="flashcard-block"><div class="mistake-label">What went wrong</div>${escapeHtml(m.what)}</div>` : ''}
+          ${(() => { const u = m.link || getSessionLinks(db.sessions.find(x => x.id === m.sessionId))[0]; return u ? `<div>${linkChipHtml(u, m.link ? 'Open the original question' : 'Open the passage')}</div>` : ''; })()}
           ${m.takeaway ? `<div class="flashcard-block takeaway"><div class="mistake-label">Takeaway</div>💡 ${escapeHtml(m.takeaway)}</div>` : ''}
           <div class="flashcard-block tip"><div class="mistake-label">Strategy for ${escapeHtml(et.label.toLowerCase())}</div>${escapeHtml(et.tip)}</div>
         </div>

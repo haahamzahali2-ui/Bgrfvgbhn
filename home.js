@@ -56,6 +56,7 @@ function getWeekProgress() {
 function renderHome() {
   renderTopbarStats();
   renderCountdown();
+  document.getElementById('homeTodayPrompt').innerHTML = todayPromptHtml();
   renderTodayStrip();
   document.getElementById('homeInsights').innerHTML = insightsHtml(generateInsights().slice(0, 3));
   renderSectionSnapshot();

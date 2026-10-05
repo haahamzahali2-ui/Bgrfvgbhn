@@ -10,7 +10,6 @@ let mistakeAnswers = { mine: '', correct: '' };
 let mistakeFilters = { bucket: 'all', status: 'all', section: 'all', period: 'all' };
 // Drill-down filters (from insights, content tracker, analytics). Keys match mistake fields.
 let mistakeDrill = {};
-let quickLogSessionId = null;
 const PAGE_SIZE = 36;
 let mistakeShowLimit = PAGE_SIZE;
 let lastMistakeSig = '';
@@ -144,6 +143,7 @@ function renderMistakes() {
           <span class="mistake-card-flags">
             ${m.myAnswer && m.correctAnswer ? `<span class="answer-flip" title="Your answer → correct answer">${escapeHtml(m.myAnswer)} → ${escapeHtml(m.correctAnswer)}</span>` : ''}
             ${m.anki ? '<span title="Flagged for Anki">🃏</span>' : ''}
+            ${linkChipHtml(m.link || getSessionLinks(db.sessions.find(x => x.id === m.sessionId))[0] || '', m.link ? 'Q' : 'Passage')}
             <span class="mistake-next" title="Next review">${status === 'mastered' && !due ? '✓' : '↻'} ${due ? 'review now' : relativeDay(m.review.due)}</span>
           </span>
         </div>
@@ -300,6 +300,7 @@ function openAddMistakeModal(prefill = {}) {
   document.getElementById('mk-what').value = '';
   document.getElementById('mk-takeaway').value = '';
   document.getElementById('mk-tags').value = (prefill.tags || []).join(', ');
+  document.getElementById('mk-link').value = '';
   document.getElementById('mk-anki').checked = false;
   updateMistakeSubjectOptions(); fillMistakeProviderOptions();
   renderErrorPicker(); renderAnswerChips(); setMistakeLinkLabel();
@@ -318,7 +319,7 @@ function openEditMistakeModal(id) {
   mistakeSelectedType = m.errorType;
   mistakeAnswers = { mine: m.myAnswer || '', correct: m.correctAnswer || '' };
   document.getElementById('mistakeModalTitle').textContent = 'Edit Mistake';
-  const hasMore = m.questionRef || m.question || m.myAnswer || m.correctAnswer || (m.tags || []).length || m.anki;
+  const hasMore = m.questionRef || m.question || m.myAnswer || m.correctAnswer || (m.tags || []).length || m.anki || m.link;
   setMkMore(!!hasMore);
   document.getElementById('mk-date').value = m.date || '';
   document.getElementById('mk-section').value = m.section;
@@ -330,6 +331,7 @@ function openEditMistakeModal(id) {
   document.getElementById('mk-what').value = m.what || '';
   document.getElementById('mk-takeaway').value = m.takeaway || '';
   document.getElementById('mk-tags').value = (m.tags || []).join(', ');
+  document.getElementById('mk-link').value = m.link || '';
   document.getElementById('mk-anki').checked = !!m.anki;
   updateMistakeSubjectOptions(); fillMistakeProviderOptions();
   renderErrorPicker(); renderAnswerChips(); setMistakeLinkLabel();
@@ -374,12 +376,13 @@ function saveMistake(andAnother) {
   const takeaway = document.getElementById('mk-takeaway').value.trim();
   const tags = document.getElementById('mk-tags').value.split(',').map(t => t.trim()).filter(Boolean);
   const anki = document.getElementById('mk-anki').checked;
+  const link = safeUrl(document.getElementById('mk-link').value);
 
   if (!mistakeSelectedType) { showToast('Pick what went wrong — that\'s the whole point 🙂'); return; }
   if (!subject) { showToast('Please add a subject'); return; }
 
   const fields = {
-    date, section, subject, provider, concept, questionRef, question, what, takeaway, tags, anki,
+    date, section, subject, provider, concept, questionRef, question, what, takeaway, tags, anki, link,
     errorType: mistakeSelectedType, myAnswer: mistakeAnswers.mine, correctAnswer: mistakeAnswers.correct,
     sessionId: mistakeLinkedSessionId
   };
@@ -412,105 +415,9 @@ function confirmDeleteMistake() {
 }
 
 // ═══════════════════════════════════
-// QUICK LOG — log every miss from a set in one go
+// LOGGING A SET'S MISSES — handled by the Daily Log editor
 // ═══════════════════════════════════
-function openQuickLog(sessionId) {
-  const s = db.sessions.find(x => x.id === sessionId);
-  if (!s) return;
-  quickLogSessionId = sessionId;
-  const missed = Math.max(0, s.total - s.correct);
-  const already = getMistakesForSession(sessionId).filter(m => m.errorType !== 'guess').length;
-  const rows = Math.min(15, Math.max(1, missed - already));
-  const sec = getSection(s.section);
-
-  document.getElementById('quickLogSub').innerHTML = `
-    <span class="section-badge" style="--sec-color:${sec.color}">${sec.short}</span>
-    <strong>${escapeHtml(s.provider)} · ${escapeHtml(s.subject)}</strong>${s.topic ? ` — ${escapeHtml(s.topic)}` : ''}
-    · ${s.correct}/${s.total} · <strong>${plural(missed, 'miss', 'misses')}</strong>${already ? ` (${already} already logged)` : ''}`;
-  fillDatalist('qlTopicOptions', [...new Set([...getTopicsForSubject(s.subject), ...db.mistakes.filter(m => m.subject === s.subject).map(m => m.concept).filter(Boolean)])]);
-  const wrap = document.getElementById('quickLogRows');
-  wrap.innerHTML = '';
-  for (let i = 0; i < rows; i++) addQuickLogRow();
-  renderQuickLogLegend();
-  openModal('quickLogModal');
-  setTimeout(() => wrap.querySelector('.ql-type')?.focus(), 80);
-}
-
-function renderQuickLogLegend() {
-  // One-tap error type buttons that fill the first empty row — fastest way to log
-  document.getElementById('quickLogLegend').innerHTML = ERROR_TYPES.map(e => {
-    const b = getBucket(e.bucket);
-    return `<button type="button" class="error-pick small" style="--bucket-color:${b.color}" onclick="quickFillType('${e.key}')" title="${escapeHtml(e.tip)}">${e.icon} ${e.label}</button>`;
-  }).join('');
-}
-
-function quickFillType(key) {
-  const rows = [...document.querySelectorAll('#quickLogRows .ql-row')];
-  let target = rows.find(r => !r.querySelector('.ql-type').value);
-  if (!target) { addQuickLogRow(key === 'guess'); target = [...document.querySelectorAll('#quickLogRows .ql-row')].pop(); }
-  target.querySelector('.ql-type').value = key;
-  onQuickTypeChange(target.querySelector('.ql-type'));
-  target.querySelector('.ql-concept').focus();
-}
-
-function addQuickLogRow(isGuess) {
-  const wrap = document.getElementById('quickLogRows');
-  const n = wrap.children.length + 1;
-  const row = document.createElement('div');
-  row.className = 'ql-row';
-  row.innerHTML = `
-    <div class="ql-num">${n}</div>
-    <div class="ql-fields">
-      <div class="ql-line">
-        <input class="ql-qref" placeholder="Q#" />
-        <select class="ql-type" onchange="onQuickTypeChange(this)">${errorTypeOptionsHtml(isGuess ? 'guess' : '')}</select>
-        <input class="ql-concept" list="qlTopicOptions" placeholder="Concept / topic (e.g. Enzyme kinetics)" />
-      </div>
-      <div class="ql-line">
-        <input class="ql-what" placeholder="What went wrong? (e.g. Forgot Km ↑ with competitive inhibition)" />
-        <input class="ql-takeaway" placeholder="Takeaway / rule for next time" />
-      </div>
-    </div>
-    <button type="button" class="ql-remove" title="Remove row" onclick="this.parentElement.remove();renumberQuickLog()">✕</button>`;
-  wrap.appendChild(row);
-  if (isGuess) onQuickTypeChange(row.querySelector('.ql-type'));
-}
-
-function onQuickTypeChange(sel) {
-  const et = sel.value ? getErrorType(sel.value) : null;
-  sel.closest('.ql-row').style.setProperty('--bucket-color', et ? getBucket(et.bucket).color : 'var(--border)');
-  sel.closest('.ql-row').classList.toggle('has-type', !!et);
-}
-
-function renumberQuickLog() {
-  document.querySelectorAll('#quickLogRows .ql-num').forEach((el, i) => { el.textContent = i + 1; });
-}
-
-function saveQuickLog() {
-  const s = db.sessions.find(x => x.id === quickLogSessionId);
-  if (!s) return;
-  let saved = 0;
-  document.querySelectorAll('#quickLogRows .ql-row').forEach((row, i) => {
-    const type = row.querySelector('.ql-type').value;
-    if (!type) return;
-    db.mistakes.push(normalizeMistake({
-      id: newId('MK'), createdAt: Date.now() + i,
-      date: s.date, section: s.section, subject: s.subject, provider: s.provider, sessionId: s.id,
-      questionRef: row.querySelector('.ql-qref').value.trim(),
-      concept: row.querySelector('.ql-concept').value.trim(),
-      what: row.querySelector('.ql-what').value.trim(),
-      takeaway: row.querySelector('.ql-takeaway').value.trim(),
-      errorType: type, question: '', tags: [], anki: false, myAnswer: '', correctAnswer: ''
-    }));
-    saved++;
-  });
-  if (!saved) { showToast('Pick an error type for at least one row (or Skip)'); return; }
-  saveDB();
-  closeModal('quickLogModal');
-  refreshAll();
-  const left = getUnloggedCount(s);
-  showToast(`Logged ${plural(saved, 'mistake')} ✓${left ? ` — ${left} still unlogged` : ' — set fully reviewed 🎯'}`);
-}
+function openQuickLog(sessionId) { openLogEditor({ sessionId, focusMistakes: true }); }
 
 // Pick which set to log next
 function openUnloggedPicker() {

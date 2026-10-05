@@ -4,7 +4,6 @@
 
 let currentPracticeSection = 'all';
 let currentPracticePeriod = 'all';
-let editingSessionId = null;
 let sessionShowLimit = 36;
 let lastSessionSig = '';
 // Drill-down filters set from analytics (AND). Values match getDimValue() output.
@@ -36,7 +35,8 @@ function getFilteredSessions() {
   const search = (document.getElementById('practiceSearch')?.value || '').trim().toLowerCase();
   if (search) {
     list = list.filter(s =>
-      [s.subject, s.provider, s.topic, s.notes, getSection(s.section).short, getSection(s.section).name]
+      [s.subject, s.provider, s.topic, s.notes, getSection(s.section).short, getSection(s.section).name, ...getSessionLinks(s),
+        ...getMistakesForSession(s.id).flatMap(m => [m.concept, m.question, m.what, m.takeaway])]
         .some(v => String(v || '').toLowerCase().includes(search))
     );
   }
@@ -51,12 +51,15 @@ function renderSessions() {
   const list = getFilteredSessions();
 
   const countEl = document.getElementById('practiceCountLabel');
-  if (countEl) countEl.textContent = `${db.sessions.length} practice set${db.sessions.length !== 1 ? 's' : ''} logged`;
+  if (countEl) {
+    const days = new Set(db.sessions.map(s => s.date)).size;
+    countEl.textContent = `${plural(db.sessions.length, 'entry', 'entries')} across ${plural(days, 'day')} · ${plural(db.mistakes.length, 'question')} explained`;
+  }
 
   const statsEl = document.getElementById('practiceFilterStats');
   if (statsEl) {
     const sum = summarizeSessions(list);
-    statsEl.textContent = list.length ? `${list.length} set${list.length !== 1 ? 's' : ''} · ${sum.questions} Qs · ${sum.accuracy}% correct` : '';
+    statsEl.textContent = list.length ? `${plural(list.length, 'entry', 'entries')} · ${sum.questions} Qs · ${sum.accuracy}% correct` : '';
   }
 
   renderPracticeActiveFilters();
@@ -64,59 +67,89 @@ function renderSessions() {
   const sig = JSON.stringify([currentPracticeSection, currentPracticePeriod, practiceDrillFilters, document.getElementById('practiceSearch')?.value || '']);
   if (sig !== lastSessionSig) { sessionShowLimit = PAGE_SIZE; lastSessionSig = sig; }
 
+  const todayBox = document.getElementById('historyToday');
+  if (todayBox) todayBox.innerHTML = todayPromptHtml();
+
   if (list.length === 0) {
     grid.innerHTML = `<div class="patients-empty-state">
-      <div class="patients-empty-icon">📚</div>
-      <div class="patients-empty-title">${db.sessions.length ? 'No practice sets match' : 'No practice logged yet'}</div>
+      <div class="patients-empty-icon">📅</div>
+      <div class="patients-empty-title">${db.sessions.length ? 'No entries match' : 'Your log is empty'}</div>
       <div class="patients-empty-sub">${db.sessions.length
         ? 'Try adjusting your search or filters'
-        : 'Log your first question set, or <a href="#" onclick="loadSampleData();return false;">load sample data</a> to explore'}</div>
+        : 'Do a set, then log it here with everything you missed. <a href="#" onclick="loadSampleData();return false;">Or load sample data</a> to explore.'}</div>
     </div>`;
     return;
   }
 
-  grid.innerHTML = list.slice(0, sessionShowLimit).map(s => {
-    const sec = getSection(s.section);
-    const acc = pct(s.correct, s.total);
-    const accClass = getAccuracyClass(acc);
-    const missed = Math.max(0, s.total - s.correct);
-    const logged = getMistakesForSession(s.id).filter(m => m.errorType !== 'guess').length;
-    const logState = !missed ? 'perfect' : logged >= missed ? 'done' : logged ? 'partial' : 'none';
-    const logLabel = !missed ? '💯 Perfect set' : logged >= missed ? `✓ All ${missed} misses logged` : `📝 ${logged}/${missed} misses logged`;
-    return `<div class="session-card ${accClass}" onclick="openEditSessionModal(${jsArg(s.id)})">
-      <div class="session-card-stripe"></div>
-      <div class="session-card-body">
-        <div class="session-card-header">
-          <div class="session-card-id-group">
-            <span class="session-card-id-label">${escapeHtml(s.provider) || 'Provider'}</span>
-            <span class="session-card-acc ${accClass}">${acc}%</span>
-          </div>
-          <span class="section-badge" style="--sec-color:${sec.color}">${sec.short}</span>
-        </div>
-        <div class="session-card-subject">${escapeHtml(s.subject) || '—'}</div>
-        <div class="session-card-topic">${escapeHtml(s.topic) || '&nbsp;'}</div>
-        <div class="session-card-dates">
-          <div class="session-date-block">
-            <div class="session-date-label">Date</div>
-            <div class="session-date-val">${formatDateShort(s.date)}</div>
-          </div>
-          <div class="session-date-block">
-            <div class="session-date-label">Score</div>
-            <div class="session-date-val">${escapeHtml(s.correct)} / ${escapeHtml(s.total)}</div>
-          </div>
-          <div class="session-date-block">
-            <div class="session-date-label">Time</div>
-            <div class="session-date-val">${Number(s.minutes) > 0 ? escapeHtml(s.minutes) + ' min' : '—'}</div>
-          </div>
-        </div>
-        ${s.notes ? `<div class="session-card-notes">${escapeHtml(s.notes)}</div>` : ''}
-        <div class="session-log-row">
-          <span class="session-log-state ${logState}">${logLabel}</span>
-          ${missed ? `<button class="session-log-btn" onclick="event.stopPropagation();${logState === 'done' ? `openMistakesFiltered({ sessionId: ${jsArg(s.id)} })` : `openQuickLog(${jsArg(s.id)})`}">${logState === 'done' ? 'View' : 'Log misses'} →</button>` : ''}
-        </div>
+  // Group the visible page of entries by day
+  const shown = list.slice(0, sessionShowLimit);
+  const days = [];
+  shown.forEach(s => {
+    const d = days[days.length - 1];
+    if (d && d.date === s.date) d.items.push(s); else days.push({ date: s.date, items: [s] });
+  });
+  grid.innerHTML = days.map(d => {
+    const allDay = list.filter(s => s.date === d.date);
+    const sum = summarizeSessions(allDay);
+    const explained = allDay.reduce((a, s) => a + getMistakesForSession(s.id).length, 0);
+    const rel = d.date === todayISO() ? 'Today' : d.date === addDaysISO(todayISO(), -1) ? 'Yesterday' : parseLocalDate(d.date)?.toLocaleDateString('en-US', { weekday: 'long' }) || '';
+    return `<div class="day-group">
+      <div class="day-head">
+        <div class="day-title">${rel} <span>${formatDateShort(d.date)}</span></div>
+        <div class="day-stats">${plural(allDay.length, 'entry', 'entries')} · ${sum.questions} Qs · <b class="${getAccuracyClass(sum.accuracy)}">${sum.accuracy}%</b>${sum.minutes ? ` · ${Math.round(sum.minutes)} min` : ''} · ${plural(explained, 'question')} explained</div>
       </div>
+      ${d.items.map(entryCardHtml).join('')}
     </div>`;
   }).join('') + showMoreHtml(list.length, sessionShowLimit, 'sessionShowLimit += PAGE_SIZE; renderSessions()');
+}
+
+function entryCardHtml(s) {
+  const sec = getSection(s.section);
+  const acc = pct(s.correct, s.total);
+  const accClass = getAccuracyClass(acc);
+  const missed = Math.max(0, s.total - s.correct);
+  const ms = getMistakesForSession(s.id).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+  const unlogged = getUnloggedCount(s);
+  const pace = Number(s.minutes) > 0 ? formatPace(Math.round(s.minutes * 60 / s.total)) : null;
+  const links = getSessionLinks(s);
+  return `<div class="entry-card ${accClass}" data-entry="${escapeHtml(s.id)}">
+    <div class="entry-main" onclick="openLogEditor({ sessionId: ${jsArg(s.id)} })">
+      <div class="entry-score ${accClass}">${acc}%<small>${s.correct}/${s.total}</small></div>
+      <div class="entry-info">
+        <div class="entry-title"><span class="section-badge" style="--sec-color:${sec.color}">${sec.short}</span> ${escapeHtml(s.provider)} · ${escapeHtml(s.subject)}</div>
+        ${s.topic ? `<div class="entry-topic">${escapeHtml(s.topic)}</div>` : ''}
+        <div class="entry-meta">
+          ${Number(s.minutes) > 0 ? `<span>⏱ ${escapeHtml(s.minutes)} min · ${pace}/Q</span>` : ''}
+          ${links.map((u, i) => linkChipHtml(u, links.length > 1 ? `Passage ${i + 1}` : 'Open passage')).join('')}
+        </div>
+      </div>
+      <div class="entry-side">
+        <span class="session-log-state ${!missed ? 'perfect' : unlogged ? (unlogged < missed ? 'partial' : 'none') : 'done'}">${!missed ? '💯 Perfect' : unlogged ? `${missed - unlogged}/${missed} explained` : `✓ All ${missed} explained`}</span>
+        <span class="entry-edit">Edit ›</span>
+      </div>
+    </div>
+    ${ms.length ? `<div class="entry-misses">${ms.map(m => {
+      const et = getErrorType(m.errorType);
+      return `<div class="em-row" onclick="openLogEditor({ sessionId: ${jsArg(s.id)} })" title="Edit">
+        <span class="em-q">${escapeHtml(m.questionRef) || (m.errorType === 'guess' ? '🍀' : '•')}</span>
+        ${m.myAnswer || m.correctAnswer ? `<span class="answer-flip">${escapeHtml(m.myAnswer || '?')} → ${escapeHtml(m.correctAnswer || '?')}</span>` : ''}
+        <span class="error-chip" style="--bucket-color:${getBucket(et.bucket).color}">${et.icon} ${escapeHtml(et.label)}</span>
+        <span class="em-text">${m.concept ? `<b>${escapeHtml(m.concept)}</b>` : ''}${m.question ? ` — ${escapeHtml(m.question)}` : ''}${m.takeaway ? `<span class="em-take">💡 ${escapeHtml(m.takeaway)}</span>` : ''}</span>
+        ${m.link ? linkChipHtml(m.link, 'Q') : ''}
+      </div>`;
+    }).join('')}</div>` : ''}
+    ${unlogged ? `<div class="entry-unlogged"><span>📝 ${plural(unlogged, 'miss', 'misses')} not explained yet</span><button class="session-log-btn" onclick="openLogEditor({ sessionId: ${jsArg(s.id)}, focusMistakes: true })">Explain ${unlogged === 1 ? 'it' : 'them'} →</button></div>` : ''}
+    ${s.notes ? `<div class="entry-notes">📓 ${escapeHtml(s.notes)}</div>` : ''}
+  </div>`;
+}
+
+// "Did you log today?" prompt at the top of the history
+function todayPromptHtml() {
+  const today = db.sessions.filter(s => s.date === todayISO());
+  if (!today.length) return `<div class="today-prompt empty"><span>📅 <b>Nothing logged today yet.</b> Did a passage or a question set? Log it while it's fresh.</span><button class="btn-save" onclick="openLogEditor()">+ Log today's practice</button></div>`;
+  const sum = summarizeSessions(today);
+  const unl = today.reduce((a, s) => a + getUnloggedCount(s), 0);
+  return `<div class="today-prompt"><span>✅ <b>Today:</b> ${plural(today.length, 'entry', 'entries')} · ${sum.questions} Qs · ${sum.accuracy}%${unl ? ` · <b class="warn">${unl} still to explain</b>` : ' · everything explained'}</span><button class="btn-save" onclick="openLogEditor()">+ Log another</button></div>`;
 }
 
 // ═══════════════════════════════════
@@ -178,158 +211,10 @@ function setPracticePeriodFilter(filter, btn) {
 function filterSessions() { renderSessions(); }
 
 // ═══════════════════════════════════
-// MODAL — ADD / EDIT
+// ADD / EDIT — everything goes through the Daily Log editor (logbook.js)
 // ═══════════════════════════════════
-function updateSubjectOptions() {
-  const section = document.getElementById('ses-section').value;
-  // Suggested subjects for the section first, then anything else you've used before
-  const used = [...new Set(db.sessions.map(s => s.subject).filter(Boolean))];
-  fillDatalist('subjectOptions', [...new Set([...SUBJECTS_BY_SECTION[section], ...used])]);
-  if (section === 'cars' && !document.getElementById('ses-subject').value) {
-    document.getElementById('ses-subject').value = 'CARS — Mixed';
-  }
-}
-
-function fillProviderOptions() {
-  const used = db.sessions.map(s => s.provider).filter(Boolean);
-  fillDatalist('providerOptions', [...new Set([...PROVIDERS, ...used])]);
-}
-
-// prefill: optional { section, total, minutes } (e.g., from the study timer)
-function openAddSessionModal(prefill = {}) {
-  editingSessionId = null;
-  const last = [...db.sessions].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
-  document.getElementById('sessionModalTitle').textContent = 'Log Practice';
-  document.getElementById('ses-date').value = todayISO();
-  // Pre-fill section + provider from your last entry to make batch logging quick
-  document.getElementById('ses-section').value = prefill.section || last?.section || 'cp';
-  document.getElementById('ses-subject').value = '';
-  document.getElementById('ses-provider').value = last?.provider || '';
-  document.getElementById('ses-topic').value = '';
-  document.getElementById('ses-total').value = prefill.total || '';
-  document.getElementById('ses-correct').value = '';
-  document.getElementById('ses-minutes').value = prefill.minutes || '';
-  document.getElementById('ses-notes').value = '';
-  updateSubjectOptions(); fillProviderOptions(); updateSessionPreview();
-  document.getElementById('sessionDeleteBar').classList.remove('show');
-  document.getElementById('sessionDeleteTrigger').style.display = 'none';
-  document.getElementById('sessionMistakeInfo').style.display = 'none';
-  document.getElementById('sessionModal').classList.add('open');
-  setTimeout(() => document.getElementById('ses-subject').focus(), 60);
-}
-
-function openEditSessionModal(id) {
-  const s = db.sessions.find(x => x.id === id);
-  if (!s) return;
-  editingSessionId = id;
-  document.getElementById('sessionModalTitle').textContent = 'Edit Practice Set';
-  document.getElementById('ses-date').value = s.date || '';
-  document.getElementById('ses-section').value = s.section;
-  document.getElementById('ses-subject').value = s.subject || '';
-  document.getElementById('ses-provider').value = s.provider || '';
-  document.getElementById('ses-topic').value = s.topic || '';
-  document.getElementById('ses-total').value = s.total;
-  document.getElementById('ses-correct').value = s.correct;
-  document.getElementById('ses-minutes').value = s.minutes || '';
-  document.getElementById('ses-notes').value = s.notes || '';
-  updateSubjectOptions(); fillProviderOptions(); updateSessionPreview();
-  document.getElementById('sessionDeleteBar').classList.remove('show');
-  document.getElementById('sessionDeleteTrigger').style.display = 'inline-block';
-  renderSessionMistakeInfo(s);
-  document.getElementById('sessionModal').classList.add('open');
-}
-
-// "What went wrong" status inside the edit-set modal
-function renderSessionMistakeInfo(s) {
-  const el = document.getElementById('sessionMistakeInfo');
-  const missed = Math.max(0, s.total - s.correct);
-  const logged = getMistakesForSession(s.id);
-  const wrong = logged.filter(m => m.errorType !== 'guess').length;
-  if (!missed && !logged.length) { el.style.display = 'none'; return; }
-  const types = {};
-  logged.forEach(m => { types[m.errorType] = (types[m.errorType] || 0) + 1; });
-  el.style.display = 'block';
-  el.innerHTML = `
-    <div class="smi-head">
-      <span>📝 <strong>${wrong}/${missed}</strong> misses logged${logged.length - wrong ? ` · ${logged.length - wrong} lucky guess${logged.length - wrong > 1 ? 'es' : ''}` : ''}</span>
-      <span class="smi-actions">
-        ${logged.length ? `<button type="button" class="filter-clear-btn" onclick="closeModal('sessionModal');openMistakesFiltered({ sessionId: ${jsArg(s.id)} })">View</button>` : ''}
-        <button type="button" class="filter-clear-btn" onclick="closeModal('sessionModal');openQuickLog(${jsArg(s.id)})">Log what went wrong →</button>
-      </span>
-    </div>
-    ${logged.length ? `<div class="smi-chips">${Object.keys(types).map(k => {
-      const et = getErrorType(k);
-      return `<span class="error-chip" style="--bucket-color:${getBucket(et.bucket).color}">${et.icon} ${escapeHtml(et.label)} × ${types[k]}</span>`;
-    }).join('')}</div>` : ''}`;
-}
-
-// Live accuracy preview, same pattern as the BP preview in Helping Hands
-function updateSessionPreview() {
-  const total = parseInt(document.getElementById('ses-total').value, 10);
-  const correct = parseInt(document.getElementById('ses-correct').value, 10);
-  const minutes = parseFloat(document.getElementById('ses-minutes').value);
-  const el = document.getElementById('sessionLivePreview');
-  if (!total || isNaN(correct)) { el.className = 'live-preview'; el.textContent = ''; return; }
-  if (correct > total) { el.className = 'live-preview low'; el.innerHTML = '⚠️ <strong>Correct can\'t exceed total questions</strong>'; return; }
-  const acc = pct(correct, total);
-  const cls = getAccuracyClass(acc);
-  const icon = cls === 'high' ? '✅' : cls === 'medium' ? '🟡' : '🔻';
-  const label = cls === 'high' ? 'On target' : cls === 'medium' ? 'Close to target' : 'Needs review';
-  const pace = minutes > 0 ? ` · ${Math.round((minutes * 60) / total)} sec / question` : '';
-  el.className = `live-preview ${cls}`;
-  el.innerHTML = `${icon} <strong>${acc}% — ${label}</strong> &nbsp;·&nbsp; <span style="font-weight:400;opacity:0.8">${correct} of ${total} correct${pace}</span>`;
-}
-
-// ═══════════════════════════════════
-// SAVE / DELETE
-// ═══════════════════════════════════
-function saveSession() {
-  const date = document.getElementById('ses-date').value;
-  const section = document.getElementById('ses-section').value;
-  const subject = document.getElementById('ses-subject').value.trim();
-  const provider = document.getElementById('ses-provider').value.trim();
-  const topic = document.getElementById('ses-topic').value.trim();
-  const total = parseInt(document.getElementById('ses-total').value, 10);
-  const correct = parseInt(document.getElementById('ses-correct').value, 10);
-  const minutesRaw = document.getElementById('ses-minutes').value;
-  const minutes = minutesRaw ? Math.max(0, parseFloat(minutesRaw)) : 0;
-  const notes = document.getElementById('ses-notes').value.trim();
-
-  if (!date || !subject || !provider) { showToast('Please fill in Date, Subject, and Provider'); return; }
-  if (!total || total < 1 || isNaN(correct) || correct < 0) { showToast('Please enter questions and number correct'); return; }
-  if (correct > total) { showToast('Correct can\'t be more than total questions'); return; }
-
-  const fields = { date, section, subject, provider, topic, total, correct, minutes, notes };
-  let newSetId = null;
-  if (editingSessionId) {
-    const s = db.sessions.find(x => x.id === editingSessionId);
-    if (s) Object.assign(s, fields);
-    showToast('Practice set updated ✓');
-  } else {
-    newSetId = newId('SET');
-    db.sessions.push({ id: newSetId, createdAt: Date.now(), ...fields });
-    showToast(`Logged ${correct}/${total} — ${pct(correct, total)}% ✓`);
-  }
-  saveDB();
-  closeModal('sessionModal');
-  refreshAll();
-  // Strike while it's fresh: go straight to "what went wrong"
-  if (newSetId && correct < total && db.settings.promptMistakes) openQuickLog(newSetId);
-}
-
-function confirmDeleteSession() {
-  if (!editingSessionId) return;
-  const idx = db.sessions.findIndex(s => s.id === editingSessionId);
-  if (idx < 0) return;
-  const [removed] = db.sessions.splice(idx, 1);
-  saveDB();
-  closeModal('sessionModal');
-  refreshAll();
-  // Linked mistakes are kept — they're still lessons
-  showToast('Practice set deleted', 'Undo', () => {
-    db.sessions.splice(idx, 0, removed); saveDB(); refreshAll(); showToast('Restored ✓');
-  });
-}
+function openAddSessionModal(prefill = {}) { openLogEditor({ prefill }); }
+function openEditSessionModal(id) { openLogEditor({ sessionId: id }); }
 
 // ═══════════════════════════════════
 // CSV EXPORT — the currently filtered list
@@ -337,10 +222,10 @@ function confirmDeleteSession() {
 function exportSessionsCSV() {
   const list = getFilteredSessions();
   if (!list.length) { showToast('Nothing to export'); return; }
-  const cols = ['date', 'section', 'subject', 'provider', 'topic', 'total', 'correct', 'accuracy_pct', 'minutes', 'notes'];
+  const cols = ['date', 'section', 'subject', 'provider', 'topic', 'links', 'total', 'correct', 'accuracy_pct', 'minutes', 'notes'];
   const esc = v => `"${String(v ?? '').replaceAll('"', '""')}"`;
   const rows = list.map(s => [
-    s.date, getSection(s.section).short, s.subject, s.provider, s.topic,
+    s.date, getSection(s.section).short, s.subject, s.provider, s.topic, getSessionLinks(s).join(' '),
     s.total, s.correct, pct(s.correct, s.total), s.minutes || '', s.notes
   ].map(esc).join(','));
   downloadFile(`mcat-practice-${todayISO()}.csv`, [cols.join(','), ...rows].join('\n'), 'text/csv');

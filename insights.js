@@ -281,12 +281,12 @@ function generateInsights() {
 
   // Unlogged misses
   const unlogged = getTotalUnlogged();
-  if (unlogged) add(90, 'warn', '📝', `<strong>${plural(unlogged, 'missed question')} not logged yet.</strong> You can't fix a pattern you haven't written down.`, { label: 'Log them', fn: 'openUnloggedPicker()' });
+  if (unlogged) add(90, 'warn', '📝', `<strong>${plural(unlogged, 'missed question')} not explained yet.</strong> You can't fix a pattern you haven't written down.`, { label: 'Log them', fn: 'openUnloggedPicker()' });
 
   // Streak
   if (typeof getStreak === 'function') {
     const { current, practicedToday } = getStreak();
-    if (current >= 2 && !practicedToday) add(85, 'warn', '🔥', `<strong>Keep your ${current}-day streak alive</strong> — log a set or clear a few reviews today.`, { label: 'Log practice', fn: 'openAddSessionModal()' });
+    if (current >= 2 && !practicedToday) add(85, 'warn', '🔥', `<strong>Keep your ${current}-day streak alive</strong> — log a set or clear a few reviews today.`, { label: 'Log practice', fn: 'openLogEditor()' });
     else if (current >= 3) add(30, 'good', '🔥', `<strong>${current}-day streak.</strong> Consistency beats cramming — keep stacking days.`);
   }
 
@@ -388,7 +388,7 @@ function generateInsights() {
   if (!out.length) add(10, 'info', '👋', db.sessions.length
     ? '<strong>Keep logging.</strong> Insights get sharper with every set and every mistake you record.'
     : '<strong>Welcome!</strong> Log your first practice set — or load sample data in ⚙️ Settings to see what this dashboard can do.',
-    db.sessions.length ? null : { label: 'Log practice', fn: 'openAddSessionModal()' });
+    db.sessions.length ? null : { label: 'Log practice', fn: 'openLogEditor()' });
 
   return out.sort((a, b) => b.pri - a.pri);
 }
