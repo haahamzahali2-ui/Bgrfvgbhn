@@ -123,9 +123,12 @@ function normalizeMistake(m) {
   return m;
 }
 
-function saveDB() {
+// touch = this is a real change (stamp it and sync it to Google Sheets)
+function saveDB(touch = true) {
+  if (touch) db.updatedAt = Date.now();
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }
   catch(e) { showToast('Could not save — browser storage is full or blocked.'); }
+  if (touch && typeof markSyncDirty === 'function') markSyncDirty();
 }
 
 function newId(prefix) { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`; }
@@ -287,6 +290,7 @@ function openSettingsModal() {
   document.getElementById('set-target').value = db.settings.targetScore || '';
   document.getElementById('set-target-acc').value = db.settings.targetAccuracy || 75;
   document.getElementById('clearDataBar').classList.remove('show');
+  if (typeof renderSyncSettings === 'function') renderSyncSettings();
   openModal('settingsModal');
 }
 

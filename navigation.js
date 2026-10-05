@@ -136,6 +136,7 @@ document.addEventListener('keydown', e => {
 // BOOTSTRAP / INIT
 // ═══════════════════════════════════
 loadDB();
-saveDB(); // persist any schema migration
+saveDB(false); // persist any schema migration (not a real change — don't sync)
+if (getSyncUrl()) pullFromSheet(); else setSyncStatus('off');
 const startPage = (location.hash || '').slice(1);
 showPage(document.getElementById('page-' + startPage) ? startPage : 'home');

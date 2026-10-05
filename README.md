@@ -12,6 +12,29 @@ One top bar: **Home · Log · History · Exams · Stats**, plus ⚙️ Settings 
 - **Exams**: full-length scores, predicted score, percentile, and test-day projection.
 - **Stats**: **Overview** (by section, subject, and provider), **What went wrong** (your error patterns), and **Deep dive** (pace, fatigue, weekday, answer habits, momentum).
 
+## ☁️ Google Sheet sync (recommended)
+
+Your data saves in your browser automatically. Connect a Google Sheet and every save **also** goes to a Sheet you own, so it survives a wiped browser and shows up on any device.
+
+**One-time setup (about 5 minutes):**
+1. Go to [sheets.new](https://sheets.new) and name the Sheet (e.g. *MCAT Prep Tracker*).
+2. In the Sheet, open **Extensions → Apps Script**. Delete what's there, paste the contents of [`google-apps-script.gs`](google-apps-script.gs) (or use **📋 Copy the script** in the app's setup guide), and save.
+3. Click **Deploy → New deployment → ⚙️ → Web app**. Set **Execute as: Me** and **Who has access: Anyone**, then click **Deploy**.
+4. Authorize it: **Advanced → Go to (project) → Allow**. Google calls it "unverified" because it's your own script.
+5. Copy the **Web app URL** (ends in `/exec`), paste it into **⚙️ Settings → Google Sheet sync**, and click **Connect**.
+
+**On another device:** paste the same URL into Settings there and your data loads.
+
+**How it works:**
+- The app pulls from the Sheet when it opens and whenever you come back to the tab.
+- It pushes about 1.5 seconds after each change. The newest copy wins.
+- The ☁️ icon in the top bar shows green when synced, gold while syncing, and red when there's a problem.
+- If you're offline, your work stays saved in the browser and syncs once you reconnect.
+
+**What's in the Sheet:** readable **Passages**, **Mistakes**, and **Exams** tabs, plus a hidden `_backup` tab the app syncs from.
+
+**Keep the URL private:** anyone who has it can read and change your data. The URL is stored only in your browser, never in this repo. Google Sheets' **File → Version history** lets you roll back if needed.
+
 ## Pages
 
 ### 🏠 Home dashboard
